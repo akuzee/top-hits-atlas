@@ -58,3 +58,32 @@ rides on its leader ("Bob Seger & The Silver Bullet Band" → Bob Seger). `unspl
 real groups whose name contains a solo act's ("Derek & The Dominos" vs the singer Derek).
 
 A song is (title, lead act), so a remix that adds a guest mid-run stays one song.
+
+## 5. Media as domains
+
+Music, movies and TV share every view. A domain adapter (`js/music.js` is the reference)
+turns its data into items, periods and ranked entries per period; the views never touch
+songs or films directly. Each domain maps its own genre families onto the same eight colour
+slots, so the river's colourblind-safe stack order holds in every medium. Drama is slot 1
+(blue) and Comedy slot 6 (yellow) in both film and TV so the two read alike.
+
+## 6. Movies and TV: planned sources and families (pending network access)
+
+Not yet built: the build environment blocks every host except GitHub and package registries,
+and no GitHub mirror of these datasets exists. Needed hosts, in priority order:
+`en.wikipedia.org`, `datasets.imdbws.com`, `query.wikidata.org`, `www.boxofficemojo.com`,
+`www.the-numbers.com`, optionally `api.tvmaze.com`.
+
+**Movies.** A hit is US/Canada box office. Items are films, the period is release year, rank
+is total domestic gross within the release year (Box Office Mojo from 1977, Wikipedia's
+per-year top lists before). No. 1s are weekend #1 runs (Wikipedia, 1982 on). Lanes are the
+directors and stars who defined each decade. Families, by slot: Drama, Action & Adventure
+(incl. westerns, war, spy), Sci-Fi & Fantasy, Superhero, Animation, Comedy, Musical, Horror &
+Thriller. Superhero is its own family because its rise after 2008 is the biggest box-office
+story of the period; IMDb has no such genre, so it comes from Wikidata or a franchise list.
+
+**TV.** A hit is a Nielsen season ranking (Wikipedia's top-30 tables, 1950–51 on). Items
+are shows, which recur across seasons, so a show's season-by-season rank is its chart run
+and the lanes are the shows themselves. Families, by slot: Drama, Crime & Legal, Variety &
+Talk, Western, News & Docs, Comedy, Reality & Games, Sports. Broadcast rankings miss the
+streaming era, so 2020 on needs Nielsen's streaming lists as a second source.

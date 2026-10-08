@@ -32,4 +32,7 @@ No dependencies. To pick up new weekly charts: `node tools/fetch.mjs --force`, t
 | `tools/genres.mjs` | Spotify micro-genre → family rules; #1-dataset style rules |
 | `tools/overrides.json` | Name aliases, corrected families, inferred families (see DECISIONS.md) |
 | `js/model.js` | Pure model: scoring, chart years, rankings, #1 runs, genre river. Node-testable |
-| `js/*.js` | One file per view, plus `ui.js` (drawer, search, legend) and `app.js` (boot, routing) |
+| `js/core.js` | Shared plumbing and the domain contract every medium implements |
+| `js/music.js` | Music domain adapter (the reference implementation of the contract) |
+| `js/wall.js` `calendar.js` `river.js` `lanes.js` `quiz.js` | Views; each reads only `HA.D`, the current domain |
+| `js/app.js` | Boot and routing (`#<domain>-<view>`, e.g. `#music-wall`) |
