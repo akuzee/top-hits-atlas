@@ -1,0 +1,56 @@
+<title>Hit Atlas</title>
+<meta name="description" content="Every Billboard Hot 100 hit since 1958, mapped by year, genre and artist.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&family=Big+Shoulders+Display:wght@700;900&display=swap">
+<link rel="stylesheet" href="css/styles.css">
+
+<div class="app">
+  <header class="mast">
+    <div class="mast-row">
+      <a class="wordmark" href="#wall" aria-label="Hit Atlas home">
+        <span class="wm-big">Hit Atlas</span>
+        <span class="wm-sub" id="wm-sub">Billboard Hot 100 · 1958–now</span>
+      </a>
+      <nav class="tabs" id="tabs" aria-label="Views">
+        <a href="#wall" data-view="wall">Wall</a>
+        <a href="#no1s" data-view="no1s">No.&nbsp;1s</a>
+        <a href="#genres" data-view="genres">Genres</a>
+        <a href="#artists" data-view="artists">Artists</a>
+        <a href="#quiz" data-view="quiz">Quiz</a>
+        <a href="#about" data-view="about">About</a>
+      </nav>
+      <div class="search">
+        <input id="search" type="search" placeholder="Find a song or artist" autocomplete="off" spellcheck="false" aria-label="Find a song or artist">
+        <div class="search-results" id="search-results" hidden></div>
+      </div>
+    </div>
+    <div class="legend" id="legend" role="group" aria-label="Genres: tap one to spotlight it"></div>
+  </header>
+
+  <main id="main">
+    <section class="view" id="view-wall" hidden></section>
+    <section class="view" id="view-no1s" hidden></section>
+    <section class="view" id="view-genres" hidden></section>
+    <section class="view" id="view-artists" hidden></section>
+    <section class="view" id="view-quiz" hidden></section>
+    <section class="view" id="view-about" hidden></section>
+    <p class="loading" id="loading">Loading 3,500 weeks of charts…</p>
+  </main>
+</div>
+
+<aside class="drawer" id="drawer" hidden aria-label="Song details">
+  <button class="drawer-close" id="drawer-close" aria-label="Close">×</button>
+  <div id="drawer-body"></div>
+</aside>
+<div class="tip" id="tip" hidden></div>
+
+<script src="js/model.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/wall.js"></script>
+<script src="js/no1s.js"></script>
+<script src="js/genres.js"></script>
+<script src="js/artists.js"></script>
+<script src="js/quiz.js"></script>
+<script src="js/about.js"></script>
+<script src="js/app.js"></script>
