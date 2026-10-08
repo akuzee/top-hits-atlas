@@ -2,7 +2,7 @@
 //   node tools/build-artifact.mjs   → dist/hit-atlas.html (+ dist/preview.html)
 // The artifact host wraps the page in its own <!doctype>/<head>/<body>, so the
 // main output is a fragment; preview.html adds that wrapper for local screenshots.
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 
 const here = (p) => new URL(p, import.meta.url).pathname;
 const read = (p) => readFileSync(here('../' + p), 'utf8');
@@ -13,8 +13,10 @@ let html = read('index.html');
 html = html.replace('<link rel="stylesheet" href="css/styles.css">', () => `<style>\n${read('css/styles.css')}</style>`);
 const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>\n?/g)];
 const js = scripts.map((m) => `// ── ${m[1]}\n${read(m[1])}`).join('\n');
-html = html.replace(scripts.map((m) => m[0]).join(''), () =>
-  `<script type="application/json" id="hits-data">${safe(read('data/hits.json'))}</script>\n<script>\n${js.replace(/<\/script/gi, '<\\/script')}</script>\n`);
+// One JSON block per medium that has been built; app.js offers only those.
+const data = ['music', 'movies', 'tv'].filter((d) => existsSync(here(`../data/${d}.json`)))
+  .map((d) => `<script type="application/json" id="${d}-data">${safe(read(`data/${d}.json`))}</script>\n`).join('');
+html = html.replace(scripts.map((m) => m[0]).join(''), () => `${data}<script>\n${js.replace(/<\/script/gi, '<\\/script')}</script>\n`);
 
 mkdirSync(here('../dist'), { recursive: true });
 writeFileSync(here('../dist/hit-atlas.html'), html);

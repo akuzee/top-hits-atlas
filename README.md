@@ -15,7 +15,7 @@ Views:
 
 ```sh
 node tools/fetch.mjs          # raw sources → tools/cache/raw (not in git)
-node tools/build.mjs          # → data/hits.json
+node tools/build.mjs          # → data/music.json
 node tools/test-model.mjs     # sanity checks, incl. year-end #1 agreement
 node tools/serve.mjs          # → http://localhost:8018
 node tools/build-artifact.mjs # → dist/hit-atlas.html, one self-contained file
@@ -28,7 +28,7 @@ No dependencies. To pick up new weekly charts: `node tools/fetch.mjs --force`, t
 | Path | What |
 |---|---|
 | `tools/fetch.mjs` | Downloads the three sources |
-| `tools/build.mjs` | Charts → songs, credits → acts, genres; writes `data/hits.json` and `tools/cache/review.tsv` |
+| `tools/build.mjs` | Charts → songs, credits → acts, genres; writes `data/music.json` and `tools/cache/review.tsv` |
 | `tools/genres.mjs` | Spotify micro-genre → family rules; #1-dataset style rules |
 | `tools/overrides.json` | Name aliases, corrected families, inferred families (see DECISIONS.md) |
 | `js/model.js` | Pure model: scoring, chart years, rankings, #1 runs, genre river. Node-testable |

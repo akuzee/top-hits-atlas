@@ -1,9 +1,9 @@
-// Sanity checks on the built model: runs it under node against data/hits.json.
+// Sanity checks on the built model: runs it under node against data/music.json.
 //   node tools/test-model.mjs
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 const HA = createRequire(import.meta.url)('../js/model.js');
-const m = HA.buildModel(JSON.parse(readFileSync(new URL('../data/hits.json', import.meta.url))));
+const m = HA.buildModel(JSON.parse(readFileSync(new URL('../data/music.json', import.meta.url))));
 let fail = 0;
 const check = (ok, msg) => { if (!ok) { fail++; console.log('FAIL', msg); } };
 

@@ -1,4 +1,4 @@
-// Builds data/hits.json from the raw sources (run tools/fetch.mjs first).
+// Builds data/music.json from the raw sources (run tools/fetch.mjs first).
 //   node tools/build.mjs
 // Also writes tools/cache/review.tsv: the top acts with their genre evidence,
 // which is what you read when deciding on entries for overrides.json.
@@ -264,7 +264,7 @@ function build() {
     songs: songs.map((s) => [s.title, s.credit, s.acts.map((a) => a.i), s.nLead, famI(s.fam), s.src, s.segs]),
     no1,
   };
-  writeFileSync(here('../data/hits.json'), JSON.stringify(out));
+  writeFileSync(here('../data/music.json'), JSON.stringify(out));
 
   // Review sheet: the acts that matter most, with the evidence for their family.
   const top = [...actList].sort((a, b) => b.pts - a.pts).slice(0, 1500);
@@ -276,7 +276,7 @@ function build() {
   console.log(`${charts.dates.length} weeks, ${songs.length} songs, ${actList.length} acts`);
   console.log(`#1 dataset: ${matched}/${cdr.length} matched; spotify mismatches rejected: ${rejected.length}`);
   console.log('songs by genre source', srcCount);
-  console.log('wrote data/hits.json', (JSON.stringify(out).length / 1e6).toFixed(2) + 'MB');
+  console.log('wrote data/music.json', (JSON.stringify(out).length / 1e6).toFixed(2) + 'MB');
   return { rejected };
 }
 

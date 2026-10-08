@@ -1,4 +1,4 @@
-// Turns data/hits.json into the structures every view reads. Pure: no DOM, so
+// Turns data/music.json into the structures every view reads. Pure: no DOM, so
 // tools/test-model.mjs can run it under node.
 var HA = globalThis.HA || (globalThis.HA = {});
 
