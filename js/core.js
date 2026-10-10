@@ -160,7 +160,8 @@
     const index = () => {
       if (keysFor === HA.D) return;
       keysFor = HA.D;
-      keys = { items: HA.D.items.map((x) => fold(x.title)), ents: (HA.D.entities || []).map((e) => fold(e.name)) };
+      // When the entities are the items themselves (TV shows), list them once.
+      keys = { items: HA.D.items.map((x) => fold(x.title)), ents: HA.D.entitiesAreItems ? [] : (HA.D.entities || []).map((e) => fold(e.name)) };
     };
     const pick = (it) => { box.hidden = true; input.blur(); it.kind === 'ent' ? HA.showEntity(it.i) : HA.open(HA.D.items[it.i]); };
     const render = () => {

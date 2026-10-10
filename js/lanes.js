@@ -20,7 +20,7 @@
   function lanes() {
     const D = HA.D, L = D.lanes, pal = HA.palette();
     const ids = L.ids();
-    const W = Math.max(720, root.clientWidth - 26), nameW = 160, laneH = 22, top = 22;
+    const W = Math.max(720, root.clientWidth - 26), nameW = 190, laneH = 22, top = 22;
     const H = top + ids.length * laneH + 6;
     const [t0, t1] = L.extent;
     const x = (t) => nameW + ((t - t0) / (t1 - t0)) * (W - nameW - 10);
@@ -30,7 +30,7 @@
     svg.append(ax);
     ids.forEach((i, k) => {
       const e = D.entities[i], cy = top + k * laneH + laneH / 2;
-      svg.append(s('text', { class: 'lane-name', x: nameW - 10, y: cy + 4, 'text-anchor': 'end', onclick: () => HA.showEntity(i) }, e.name.length > 24 ? e.name.slice(0, 23) + '…' : e.name));
+      svg.append(s('text', { class: 'lane-name', x: nameW - 10, y: cy + 4, 'text-anchor': 'end', onclick: () => HA.showEntity(i) }, e.name.length > 25 ? e.name.slice(0, 24) + '…' : e.name));
       svg.append(s('line', { x1: x(e.t0), x2: x(e.t1), y1: cy, y2: cy, stroke: pal.line, 'stroke-width': 2 }));
       for (const mk of L.marks(i).sort((a, b) => b.rank - a.rank)) {
         const r = mk.rank === 1 ? 6 : mk.rank <= 10 ? 4.5 : 2.8;

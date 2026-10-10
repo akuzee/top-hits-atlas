@@ -87,3 +87,24 @@ are shows, which recur across seasons, so a show's season-by-season rank is its 
 and the lanes are the shows themselves. Families, by slot: Drama, Crime & Legal, Variety &
 Talk, Western, News & Docs, Comedy, Reality & Games, Sports. Broadcast rankings miss the
 streaming era, so 2020 on needs Nielsen's streaming lists as a second source.
+
+## 7. TV: how the data was actually gathered
+
+The build container still can't reach Wikipedia, and the fetch tool runs inside the same
+container, so the Nielsen season tables were transcribed through the server-side web-search
+tool: one or more searches per season against that season's Wikipedia page, rows recorded
+only as the results stated them, never from memory. Each file in `tools/tv/seasons/` names
+its source page and whether it is complete. `build-tv.mjs` rejects rank or rating order
+violations; `test-tv.mjs` checks the #1 of 21 well-known seasons.
+
+Known gaps (search budget ran out, 200 searches per turn): 2005–06 and 2014–15 partial,
+2019–20 to 2022–23 partial, 2023–24 onward and the streaming top-10s not collected. Rerun
+the collection for those files and rebuild; nothing else changes.
+
+Wikipedia lists a show once per night when it aired twice weekly ("American Idol —
+Tuesday"); the build folds those into one show with two slots that season. Network movie
+nights are folded by network and night, since their names drift ("NBC Saturday Night at the
+Movies" / "NBC Saturday Movie").
+
+Show genres were classified from general knowledge (labelled as such in the app): no genre
+source was reachable, and these are well-known prime-time series.

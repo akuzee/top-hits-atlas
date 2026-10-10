@@ -4,6 +4,7 @@
   const HA = globalThis.HA, h = HA.h;
   const MODES = { year: 'Guess the year', first: 'Which came first?', top: 'Biggest of the year' };
   const ROUND = 10;
+  const modeLabel = () => (cfg.mode === 'top' && HA.D.quiz.topLabel) || MODES[cfg.mode];
   let root, card, side, cfg, game, mountedFor = null;
 
   function mount(el) {
@@ -80,7 +81,7 @@
       card.append(
         h('div', { class: 'q-prompt' }, 'Round complete'),
         h('div', { class: 'q-song' }, `${total} / ${ROUND * 100}`),
-        h('div', { class: 'q-artist' }, `Your best at ${MODES[cfg.mode]} (${LEVELS()[cfg.level][0]}): ${best}`),
+        h('div', { class: 'q-artist' }, `Your best at ${modeLabel()} (${LEVELS()[cfg.level][0]}): ${best}`),
         h('div', { class: 'q-row' }, h('button', { class: 'btn primary', onclick: newGame }, 'Play again')));
       return;
     }
@@ -89,7 +90,7 @@
       card.append(h('div', { class: 'q-prompt' }, 'No songs match'), h('p', {}, 'Pick more decades, a deeper level, or clear the genre spotlight.'));
       return;
     }
-    card.append(h('div', { class: 'q-prompt' }, `Question ${Math.min(game.n + (q.done ? 0 : 1), ROUND)} of ${ROUND} · ${MODES[cfg.mode]}`));
+    card.append(h('div', { class: 'q-prompt' }, `Question ${Math.min(game.n + (q.done ? 0 : 1), ROUND)} of ${ROUND} · ${modeLabel()}`));
     const nextBtn = () => h('div', { class: 'q-row' }, h('button', {
       class: 'btn primary', onclick: () => { if (game.n >= ROUND) { game.over = true; renderCard(); } else next(); },
     }, game.n >= ROUND ? 'See score' : 'Next question →'));
@@ -99,7 +100,7 @@
       const out = h('div', { class: 'q-year' }, q.guess);
       const slider = h('input', { id: 'q-slider', class: 'q-slider', type: 'range', min: lo, max: hi, value: q.guess, 'aria-label': 'Your guess', disabled: q.done ? true : null });
       slider.addEventListener('input', () => { q.guess = +slider.value; out.textContent = q.guess; });
-      card.append(h('div', { class: 'q-song' }, x.title), h('div', { class: 'q-artist' }, x.sub), h('div', { style: { marginTop: '10px' } }, D.quiz.links(x)),
+      card.append(D.quiz.yearPrompt && h('div', { class: 'note', style: { marginTop: '4px' } }, D.quiz.yearPrompt), h('div', { class: 'q-song' }, x.title), h('div', { class: 'q-artist' }, x.sub), h('div', { style: { marginTop: '10px' } }, D.quiz.links(x)),
         h('div', { style: { marginTop: '22px' } }, out), slider,
         h('div', { class: 'note', style: { display: 'flex', justifyContent: 'space-between' } }, h('span', {}, lo), h('span', {}, hi)));
       if (!q.done) {
@@ -152,7 +153,7 @@
         h('div', { class: 'score-big' }, total),
         h('div', { class: 'dots' }, Array.from({ length: ROUND }, (_, k) => h('i', { class: k < game.results.length ? 'on' : '', style: { '--v': k < game.results.length ? 15 + game.results[k] * 0.85 : 0 }, title: k < game.results.length ? `+${game.results[k]}` : '' })))),
       h('div', { class: 'panel' },
-        h('div', { class: 'label-sm' }, 'Game'), seg('mode', MODES),
+        h('div', { class: 'label-sm' }, 'Game'), seg('mode', Object.assign({}, MODES, D.quiz.topLabel && { top: D.quiz.topLabel })),
         h('div', { class: 'label-sm', style: { marginTop: '12px' } }, 'Pool'), seg('level', LEVELS()),
         h('div', { class: 'note', style: { marginTop: '4px' } }, `Each ${D.periodNoun}’s top ${LEVELS()[cfg.level][1]}${HA.state.spot != null ? ', spotlit genre only' : ''}: ${HA.plural(pool().length, D.noun)}`),
         h('div', { class: 'label-sm', style: { marginTop: '12px' } }, 'Decades'),

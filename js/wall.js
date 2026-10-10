@@ -3,10 +3,11 @@
 (function () {
   const HA = globalThis.HA, h = HA.h;
   const CELL_H = 6;
-  let root, canvas, axis, grid, decadeSeg, nSeg, orderSeg, head, cap, hover = null, order = 'genre', decade = 1980, topN = 20, mountedFor = null;
+  let root, canvas, axis, grid, extra, decadeSeg, nSeg, orderSeg, head, cap, hover = null, order = 'genre', decade = 1980, topN = 20, mountedFor = null;
 
   const decades = () => [...new Set(HA.D.periods.map((p) => Math.floor(p / 10) * 10))];
   const decadeLabel = (d) => {
+    if (HA.D.decadeLabel) return HA.D.decadeLabel(d);
     const ps = HA.D.periods.filter((p) => Math.floor(p / 10) * 10 === d);
     if (ps.length < 5) return `${HA.D.periodLabel(ps[0])}${ps.length > 1 ? '–' + String(ps[ps.length - 1]).slice(-2) : ''}`;
     return d === 2000 ? '2000s' : `’${String(d).slice(2)}s`;
@@ -26,7 +27,7 @@
     root.append(head,
       h('div', { class: 'mosaic-wrap' }, h('div', { class: 'mosaic-cap' }, cap, orderSeg), canvas, axis),
       h('div', { class: 'controls', style: { marginBottom: '12px' } }, decadeSeg),
-      h('div', { class: 'scroll-x' }, grid));
+      h('div', { class: 'scroll-x' }, grid), extra = h('div', {}));
     canvas.addEventListener('pointermove', onMove);
     canvas.addEventListener('pointerleave', () => { hover = null; HA.untip(); drawMosaic(); });
     canvas.addEventListener('click', onClick);
@@ -137,9 +138,11 @@
             style: { '--c': HA.famVar(e.it.fam) },
             title: `${e.it.title} — ${e.it.sub}`,
             onclick: () => HA.open(e.it),
-          }, h('span', { class: 'rk' }, e.rank), h('span', { class: 'tt' }, e.it.title), h('span', { class: 'ar' }, value ? `${value} · ${e.it.sub}` : e.it.sub));
+          }, h('span', { class: 'rk' }, e.rank), h('span', { class: 'tt' }, e.title || e.it.title), h('span', { class: 'ar' }, value ? `${value} · ${e.it.sub}` : e.it.sub));
         })));
     }));
+    // A domain can add a second panel per decade (TV adds streaming's top series).
+    extra.replaceChildren(D.wall.extra ? D.wall.extra(decade, topN) || '' : '');
     drawMosaic();
   }
 

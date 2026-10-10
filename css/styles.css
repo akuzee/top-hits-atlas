@@ -174,6 +174,7 @@ svg .baseline { stroke: var(--line-2); }
 .river-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
 .river svg { display: block; width: 100%; }
 .year-hits { margin-top: 18px; }
+.section-h { font-family: var(--font-display); font-weight: 900; font-size: 30px; margin: 0; text-transform: uppercase; line-height: 1; }
 .year-hits h2 { font-family: var(--font-display); font-weight: 900; font-size: 30px; margin: 0 0 4px; text-transform: uppercase; }
 .fam-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-top: 10px; }
 .fam-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-width: 0; }
@@ -217,6 +218,7 @@ svg .baseline { stroke: var(--line-2); }
 .quiz-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: clamp(16px, 3vw, 28px); min-width: 0; }
 .quiz-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .quiz-side .panel { min-width: 0; }
+.quiz-side .seg { flex-wrap: wrap; border-radius: 14px; }
 .quiz-side .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
 .q-prompt { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
 .q-song { font-family: var(--font-display); font-weight: 900; font-size: clamp(30px, 5vw, 50px); line-height: 1; margin: 8px 0 6px; text-wrap: balance; }
