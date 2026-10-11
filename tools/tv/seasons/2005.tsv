@@ -1,4 +1,4 @@
-# season=2005-06 unit=rating source=https://en.wikipedia.org/wiki/Top-rated_United_States_television_programs_of_2005%E2%80%9306 complete=no
+# season=2005-06 unit=rating source=https://en.wikipedia.org/wiki/Top-rated_United_States_television_programs_by_season complete=yes
 1	American Idol — Tuesday	FOX	17.6
 2	American Idol — Wednesday	FOX	17.2
 3	CSI: Crime Scene Investigation	CBS	15.6
@@ -7,16 +7,24 @@
 6	Without a Trace	CBS	12.3
 7	Dancing with the Stars	ABC	12.0
 8	CSI: Miami	CBS	11.8
-9	House	FOX	10.6
 9	Monday Night Football	ABC	10.6
+9	House	FOX	10.6
 11	Survivor	CBS	10.3
 12	NCIS	CBS	9.8
 13	Two and a Half Men	CBS	9.7
 13	The Unit	CBS	9.7
 15	Dancing with the Stars — Results	ABC	9.6
 15	Deal or No Deal — Monday	NBC	9.6
+17	Cold Case	CBS	9.3
+18	Lost	ABC	9.2
+18	CSI: NY	CBS	9.2
+18	Law & Order: Special Victims Unit	NBC	9.2
+21	60 Minutes	CBS	9.0
+21	Deal or No Deal — Wednesday	NBC	9.0
 23	Extreme Makeover: Home Edition	ABC	8.6
 24	Commander in Chief	ABC	8.4
+25	The New Adventures of Old Christine	CBS	8.3
+25	Unan1mous	FOX	8.3
 27	Criminal Minds	CBS	8.2
 28	24	FOX	8.1
 28	ER	NBC	8.1

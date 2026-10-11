@@ -26,6 +26,8 @@
   --c-other: #8e929c;
   --c-unknown: #d3d6dd;
   --good: #006300;
+  --award: #946000;
+  --award-tip: #f0b429;
   --bad: #d03b3b;
 
   --font-display: "Big Shoulders Display", "Arial Narrow", "Helvetica Neue", sans-serif;
@@ -37,7 +39,7 @@
     --bg: #0e1014; --surface: #171a20; --surface-2: #20242c; --ink: #eef0f4; --ink-2: #b3b8c3; --muted: #7d828e;
     --line: #262a33; --line-2: #3a3f4a; --focus: #6da7ec; --shadow: 0 12px 40px rgba(0, 0, 0, 0.5); --scrim: rgba(0, 0, 0, 0.45);
     --c1: #3987e5; --c2: #e66767; --c3: #9085e9; --c4: #d95926; --c5: #199e70;
-    --c6: #c98500; --c7: #d55181; --c8: #008300; --c-other: #7d828e; --c-unknown: #3a3f4a; --good: #0ca30c; --bad: #e66767;
+    --c6: #c98500; --c7: #d55181; --c8: #008300; --c-other: #7d828e; --c-unknown: #3a3f4a; --good: #0ca30c; --bad: #e66767; --award: #f0b429; --award-tip: #8a5a00;
     color-scheme: dark;
   }
 }
@@ -45,7 +47,7 @@
   --bg: #0e1014; --surface: #171a20; --surface-2: #20242c; --ink: #eef0f4; --ink-2: #b3b8c3; --muted: #7d828e;
   --line: #262a33; --line-2: #3a3f4a; --focus: #6da7ec; --shadow: 0 12px 40px rgba(0, 0, 0, 0.5); --scrim: rgba(0, 0, 0, 0.45);
   --c1: #3987e5; --c2: #e66767; --c3: #9085e9; --c4: #d95926; --c5: #199e70;
-  --c6: #c98500; --c7: #d55181; --c8: #008300; --c-other: #7d828e; --c-unknown: #3a3f4a; --good: #0ca30c; --bad: #e66767;
+  --c6: #c98500; --c7: #d55181; --c8: #008300; --c-other: #7d828e; --c-unknown: #3a3f4a; --good: #0ca30c; --bad: #e66767; --award: #f0b429; --award-tip: #8a5a00;
   color-scheme: dark;
 }
 
@@ -263,6 +265,10 @@ svg .baseline { stroke: var(--line-2); }
 .d-src { font-size: 11px; color: var(--muted); margin-top: 2px; }
 .d-title { font-family: var(--font-display); font-weight: 900; font-size: 34px; line-height: 1; margin: 10px 40px 6px 0; text-wrap: balance; }
 .d-credit { color: var(--ink-2); font-size: 15px; }
+.d-award { color: var(--award); font-weight: 650; }
+.tip .t-aw { color: var(--award-tip); font-weight: 650; }
+.d-award { font-size: 13px; margin-top: 4px; }
+.tile .aw, .aw-key { color: var(--award); }
 .d-acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .d-acts button { border: 1px solid var(--line-2); background: none; border-radius: 999px; padding: 2px 10px; font-size: 12px; cursor: pointer; }
 .d-acts button:hover { border-color: var(--ink); }

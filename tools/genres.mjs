@@ -30,7 +30,7 @@ const RULES = [
   ['country', /country|nashville|honky tonk|bakersfield|bluegrass|redneck|red dirt|americana|cowboy|yodel|steel guitar|old-time|banjo|outlaw/],
   ['dance',   /disco|house|edm|techno|trance|eurodance|hi-nrg|freestyle|electro(?!pop|powerpop|clash)|big room|brostep|dubstep|drum and bass|dnb|big beat|electronica|moombahton|italo|bubblegum dance|alternative dance|new rave|uk dance|australian dance|downtempo|trip hop|breakbeat|new beat|rawstyle|vogue|complextro|cedm|uk funky|liquid funk|bubble trance|electroclash|new french touch/],
   ['other',   /christian|worship|ccm|gospel/],
-  ['easy',    /soft rock|yacht rock|mellow gold|folk|singer-songwriter|neo mellow|lilith|acoustic|stomp and holler|adult standards|easy listening|lounge|jazz|swing|big band|exotica|space age pop|torch song|vintage swoon|operatic pop|new age|hammond organ|ballroom|celtic|bebop|hard bop|post-bop|stride|dixieland|smooth saxophone|vintage hollywood|melancholia|instrumental$|piano$/],
+  ['easy',    /traditional pop|vocal music|crooner|soft rock|yacht rock|mellow gold|folk|singer-songwriter|neo mellow|lilith|acoustic|stomp and holler|adult standards|easy listening|lounge|jazz|swing|big band|exotica|space age pop|torch song|vintage swoon|operatic pop|new age|hammond organ|ballroom|celtic|bebop|hard bop|post-bop|stride|dixieland|smooth saxophone|vintage hollywood|melancholia|instrumental$|piano$/],
   ['pop',     /pop rock|power pop(?!.*punk)|jangle pop|dream pop|noise pop/],
   ['rock',    /rock|metal|punk|grunge|emo|new wave(?! pop)|permanent wave|britpop|merseybeat|british invasion|freakbeat|beatlesque|surf|rockabilly|garage|psychedel|protopunk|madchester|shoegaze|zolo|pixie|post-punk|gothic|industrial|glam|jam band|krautrock|canterbury|c86|no wave|slow core|dark wave|cyberpunk|steampunk|medieval/],
   ['pop',     /pop|bubblegum|girl group|boy band|idol|teen|viral|escape room|metropopolis|alt z|indietronica|new romantic|brill building|lo-fi|chillwave|bedroom|soda|shiver|etherpop|hopebeat|modern uplift|talent show|neo-synthpop|synth/],
@@ -56,14 +56,27 @@ export function tagWeight(tag) {
   return 1;
 }
 
-// tags: Spotify genre strings for one artist. Returns a family id or null.
-export function familyOf(tags) {
+export function familyScores(tags) {
   const score = {};
   for (const t of tags) {
     const f = tagFamily(t), w = tagWeight(t);
     if (!f || !w) continue;
     score[f] = (score[f] || 0) + w;
   }
+  return score;
+}
+
+// A family only when one clearly wins (by a full vote), for sources whose
+// genre lists mix eras and labels loosely (Wikidata songs).
+export function clearFamily(tags) {
+  const ranked = Object.entries(familyScores(tags)).sort((a, b) => b[1] - a[1]);
+  if (!ranked.length) return null;
+  return ranked.length === 1 || ranked[0][1] - ranked[1][1] >= 1 ? ranked[0][0] : null;
+}
+
+// tags: Spotify genre strings for one artist. Returns a family id or null.
+export function familyOf(tags) {
+  const score = familyScores(tags);
   let best = null;
   for (const f of PRIORITY) if (score[f] && (!best || score[f] > score[best])) best = f;
   return best;

@@ -3,7 +3,7 @@
 (function () {
   const HA = globalThis.HA, h = HA.h;
   const CELL_H = 6;
-  let root, canvas, axis, grid, extra, decadeSeg, nSeg, orderSeg, head, cap, hover = null, order = 'genre', decade = 1980, topN = 20, mountedFor = null;
+  let root, canvas, axis, grid, extra, decadeSeg, nSeg, orderSeg, listSeg, head, cap, hover = null, list = 'main', order = 'genre', decade = 1980, topN = 20, mountedFor = null;
 
   const decades = () => [...new Set(HA.D.periods.map((p) => Math.floor(p / 10) * 10))];
   const decadeLabel = (d) => {
@@ -35,6 +35,9 @@
     new ResizeObserver(() => drawMosaic()).observe(canvas);
   }
 
+  // A domain can offer a second ranking (music: Billboard's official year-end lists).
+  const source = () => (list === 'alt' && HA.D.wall.alt ? HA.D.wall.alt.byPeriod : HA.D.byPeriod);
+
   // Rebuild the controls that depend on the domain.
   function setup() {
     const D = HA.D;
@@ -43,9 +46,12 @@
     if (!decades().includes(decade)) decade = decades()[0];
     topN = HA.pref('topN', D.wall.defaultN);
     if (!D.wall.topNs.includes(topN)) topN = D.wall.defaultN;
+    list = D.wall.alt ? HA.pref('wallList', 'main') : 'main';
+    listSeg = D.wall.alt && h('div', { class: 'seg', role: 'group', 'aria-label': 'Ranking' },
+      [['main', D.wall.mainLabel], ['alt', D.wall.alt.label]].map(([k, l]) => h('button', { 'data-k': k, title: k === 'alt' ? D.wall.alt.note : '', onclick: () => { list = k; HA.setPref('wallList', k); render(); } }, l)));
     head.replaceChildren(
-      h('div', {}, h('h1', {}, D.wall.title), h('p', {}, D.wall.blurb)),
-      h('div', { class: 'controls' }, nSeg));
+      h('div', {}, h('h1', {}, D.wall.title), h('p', {}, D.wall.blurb, D.awardNote && h('span', { class: 'aw-key' }, ` ★ ${D.awardNote}.`))),
+      h('div', { class: 'controls' }, listSeg, nSeg));
     nSeg.replaceChildren(...D.wall.topNs.map((n) => h('button', { 'data-n': n, onclick: () => { topN = n; HA.setPref('topN', n); render(); } }, `Top ${n}`)));
     decadeSeg.replaceChildren(...decades().map((d) => h('button', { 'data-d': d, onclick: () => { decade = d; HA.setPref('decade', d); render(); } }, decadeLabel(d))));
     cap.textContent = D.wall.caption;
@@ -54,10 +60,10 @@
   // A period's top rows as drawn: by rank, or stacked by genre (rank order within).
   function column(p) {
     const D = HA.D;
-    const list = D.byPeriod.get(p).slice(0, D.wall.rows);
-    if (order === 'rank') return list;
+    const rows = (source().get(p) || []).slice(0, D.wall.rows);
+    if (order === 'rank') return rows;
     const key = (e) => (e.it.fam < 0 ? 99 : e.it.fam);
-    return list.slice().sort((a, b) => key(a) - key(b) || a.rank - b.rank);
+    return rows.slice().sort((a, b) => key(a) - key(b) || a.rank - b.rank);
   }
 
   function cellAt(e) {
@@ -126,19 +132,20 @@
     decadeSeg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.d === decade)));
     nSeg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.n === topN)));
     orderSeg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.k === order)));
+    listSeg?.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.k === list)));
     const ps = D.periods.filter((p) => Math.floor(p / 10) * 10 === decade);
     grid.replaceChildren(...ps.map((p) => {
       const partial = D.wall.partial(p);
       return h('div', { class: 'year-col', 'data-p': p },
         h('h3', {}, D.periodLabel(p), partial && h('small', {}, partial)),
-        h('div', { class: 'tiles' }, D.byPeriod.get(p).slice(0, topN).map((e) => {
+        h('div', { class: 'tiles' }, (source().get(p) || []).slice(0, topN).map((e) => {
           const value = D.wall.value(e);
           return h('button', {
             class: 'tile' + (D.wall.crown(e) ? ' no1' : '') + (e.it.fam < 0 ? ' unknown' : '') + (HA.lit(e.it.fam) ? '' : ' dim'),
             style: { '--c': HA.famVar(e.it.fam) },
-            title: `${e.it.title} — ${e.it.sub}`,
+            title: `${e.it.title} — ${e.it.sub}${e.it.award ? ` · ${e.it.award}` : ''}`,
             onclick: () => HA.open(e.it),
-          }, h('span', { class: 'rk' }, e.rank), h('span', { class: 'tt' }, e.title || e.it.title), h('span', { class: 'ar' }, value ? `${value} · ${e.it.sub}` : e.it.sub));
+          }, h('span', { class: 'rk' }, e.rank), h('span', { class: 'tt' }, e.title || e.it.title, e.it.award && h('span', { class: 'aw', 'aria-label': e.it.award }, ' ★')), h('span', { class: 'ar' }, value ? `${value} · ${e.it.sub}` : e.it.sub));
         })));
     }));
     // A domain can add a second panel per decade (TV adds streaming's top series).

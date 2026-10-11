@@ -3,7 +3,7 @@
 var HA = globalThis.HA || (globalThis.HA = {});
 
 // Where a song's genre came from (mirrors SRC in tools/build.mjs).
-HA.SRC_LABEL = ['No genre data', 'Spotify artist genres', 'Song-level (#1 hits dataset)', 'Edited: source data was wrong', 'Inferred: no source data'];
+HA.SRC_LABEL = ['No genre data', 'Spotify artist genres', 'Song-level (#1 hits dataset)', 'Edited: source data was wrong', 'Inferred: no source data', 'Song-level (Wikidata)'];
 
 // Weekly chart points: 100 for a week at #1, 50 at #4, 10 at #100. The
 // 1/sqrt(rank) curve was calibrated against Billboard's official year-end #1s

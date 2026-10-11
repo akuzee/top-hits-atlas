@@ -128,8 +128,10 @@
       h('div', { class: 'd-src' }, D.srcLabels[it.src] || ''),
       h('div', { class: 'd-title' }, title),
       sub && h('div', { class: 'd-credit' }, sub),
+      it.award && h('div', { class: 'd-award' }, '★ ' + it.award),
     ];
   };
+  HA.awardTip = (it) => (it.award ? `<div class="t-aw">★ ${HA.esc(it.award)}</div>` : '');
   HA.stat = (big, small) => HA.h('div', { class: 'stat' }, HA.h('b', {}, big), HA.h('span', {}, small));
   HA.searchLinks = (q, sites) => {
     const enc = encodeURIComponent(q);

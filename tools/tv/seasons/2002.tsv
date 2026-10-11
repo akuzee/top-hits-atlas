@@ -1,4 +1,4 @@
-# season=2002-03 unit=rating source=https://en.wikipedia.org/wiki/Top-rated_United_States_television_programs_of_2002%E2%80%9303 complete=yes
+# season=2002-03 unit=rating source=https://en.wikipedia.org/wiki/Top-rated_United_States_television_programs_by_season complete=yes
 1	CSI: Crime Scene Investigation	CBS	16.3
 2	Friends	NBC	13.9
 3	Joe Millionaire	FOX	13.3
@@ -14,7 +14,7 @@
 13	Scrubs	NBC	10.3
 14	Law & Order: Special Victims Unit	NBC	10.1
 15	Without a Trace	CBS	10.0
-16	The Bachelor/The Bachelorette	ABC	9.9
+16	The Bachelor / The Bachelorette	ABC	9.9
 17	60 Minutes	CBS	9.6
 18	Judging Amy	CBS	9.5
 19	Law & Order: Criminal Intent	NBC	9.4

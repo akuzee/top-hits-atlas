@@ -1,4 +1,4 @@
-# season=2003-04 unit=rating source=https://en.wikipedia.org/wiki/Top-rated_United_States_television_programs_of_2003%E2%80%9304 complete=yes
+# season=2003-04 unit=rating source=https://en.wikipedia.org/wiki/Top-rated_United_States_television_programs_by_season complete=yes
 1	CSI: Crime Scene Investigation	CBS	15.9
 2	American Idol — Tuesday	FOX	14.9
 3	American Idol — Wednesday	FOX	14.1
@@ -19,7 +19,7 @@
 18	Law & Order: Special Victims Unit	NBC	8.7
 19	Crossing Jordan	NBC	8.6
 19	Law & Order: Criminal Intent	NBC	8.6
-21	The Bachelor/The Bachelorette	ABC	8.3
+21	The Bachelor / The Bachelorette	ABC	8.3
 22	Fear Factor	NBC	7.9
 23	The West Wing	NBC	7.8
 23	CBS Sunday Movie	CBS	7.8

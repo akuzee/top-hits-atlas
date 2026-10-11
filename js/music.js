@@ -22,19 +22,24 @@
       a.sub = `${HA.plural(a.songs.length, 'chart entry', 'chart entries')} · ${m.weekYear[a.first]}–${m.weekYear[a.last]}`;
     }
     const byPeriod = new Map([...m.byYear].map(([y, list]) => [y, list.map((x) => ({ it: x, rank: x.yearRank, value: x.yearPts }))]));
+    // Billboard's official year-end Hot 100 (from Wikipedia), where matched to a song.
+    const yearEnd = new Map(Object.entries(raw.yearEnd || {}).map(([y, rows]) => [+y, rows.map(([rank, i]) => ({ it: m.songs[i], rank, value: 101 - rank }))]));
+    for (const [y, rows] of yearEnd) for (const e of rows) if (!e.it.ye || e.rank < e.it.ye.rank) e.it.ye = { y, rank: e.rank };
+    for (const [i, y] of raw.awards?.grammy || []) m.songs[i].award = `Grammy Record of the Year (${y})`;
     const peakText = (x) => (x.peak === 1 ? `#1 for ${HA.plural(x.wk1, 'week')}` : `peaked #${x.peak}`);
 
     const D = {
       id: 'music', label: 'Music', m,
       noun: 'song', nouns: 'Songs', entityNoun: 'artist', entityNouns: 'Artists',
       searchHint: 'Find a song or artist',
+      awardNote: 'won the Grammy for Record of the Year',
       subtitle: `Billboard Hot 100 · Aug 1958 – ${HA.fmtMonthOf(wk(m.weeks.length - 1))}`,
       tabs: [['wall', 'Wall'], ['no1s', 'No. 1s'], ['genres', 'Genres'], ['lanes', 'Artists'], ['quiz', 'Quiz']],
       fams, hasUnknown: true, srcLabels: HA.SRC_LABEL,
       items: m.songs, entities: m.acts,
       periods: m.years, byPeriod, periodLabel: String, periodNoun: 'chart year',
       peakText,
-      tip: (x) => `<b>${HA.esc(x.title)}</b><div>${HA.esc(x.credit)}</div><div class="t-sub">${peakText(x)} · #${x.yearRank} of ${x.year}</div>`,
+      tip: (x) => `<b>${HA.esc(x.title)}</b><div>${HA.esc(x.credit)}</div><div class="t-sub">${peakText(x)} · #${x.yearRank} of ${x.year}</div>${HA.awardTip(x)}`,
       searchSub: (x) => `${x.credit} · ${x.year} · ${peakText(x)}`,
       open: openSong,
 
@@ -45,6 +50,8 @@
         partial: (y) => (y === m.firstYear ? 'from Aug' : y === m.lastYear ? `to ${HA.fmtMonthOf(wk(m.weeks.length - 1)).slice(0, 3)}` : ''),
         crown: (e) => e.it.peak === 1,
         value: () => null,
+        mainLabel: 'Chart points',
+        alt: yearEnd.size ? { label: 'Billboard year-end', byPeriod: yearEnd, note: 'Billboard’s official year-end Hot 100, which also weighs sales and airplay' } : null,
       },
 
       river: {
@@ -145,7 +152,7 @@
       h('div', { class: 'd-stats' },
         HA.stat('#' + x.peak, x.peak === 1 ? `peak · ${HA.plural(x.wk1, 'week')} at #1` : `peak · ${HA.plural(x.atPeak, 'week')} there`),
         HA.stat(x.weeksOn, 'weeks on chart'),
-        HA.stat('#' + x.yearRank, `of chart year ${x.year}`),
+        x.ye ? HA.stat('#' + x.ye.rank, `Billboard year-end ${x.ye.y} (here #${x.yearRank} of ${x.year})`) : HA.stat('#' + x.yearRank, `of chart year ${x.year}`),
         HA.stat(HA.fmtDate(m.weeks[x.first]).replace(/, \d{4}$/, ''), 'debut, ' + m.weeks[x.first].slice(0, 4))),
       h('div', { class: 'label-sm' }, 'Chart run'),
       h('div', { class: 'd-run' }, runChart(x, 360, 130)),
@@ -247,10 +254,11 @@
       h('h2', {}, 'Years and rankings'),
       h('p', {}, 'Each week on the chart earns a song points: 100 for #1, falling as 100 ÷ √rank (50 at #4, 20 at #25, 10 at #100). A song belongs to the chart year in which it earned the most, and songs are ranked within a year by those points. Chart years run December to November, like Billboard’s own year-end lists, so a song that tops the chart over Christmas counts toward the following year.'),
       h('p', {}, 'Billboard’s official year-end lists also weigh sales and airplay directly, so this ranking will not match them exactly. Checked against the official year-end #1 for 1959–2024, it picks the same song in 46 of 66 years and has it in its top five in 57. A plain sum of chart positions matches only 20, because it rewards slow-burning songs that sat at #30 for a year over chart-toppers.'),
+      h('p', {}, 'The Wall’s “Billboard year-end” button swaps in the official lists themselves (1959 on). About 96% of their entries are matched to a song here; the rest are left out of that view. A ★ marks the songs that won the Grammy for Record of the Year.'),
       h('h2', {}, 'Genres'),
       h('p', {}, 'Colour shows one of eight genre families, plus Other. They are broad on purpose, so a decade reads at a glance; the finer Spotify genres appear on each song and artist.'),
       HA.famTable(D),
-      h('p', {}, 'Genre usually belongs to the artist, not the song: it comes from the artist’s Spotify genres as of 2021. The exception is #1 hits, which use a song-level genre from Chris Dalla Riva’s hand-coded dataset of every #1 when its style pins the sound down (Disco, Hip Hop, Soul). So an artist who changed style shows one colour, except on some of their #1s.'),
+      h('p', {}, 'Genre usually belongs to the artist, not the song: it comes from the artist’s Spotify genres as of 2021. Two song-level sources refine that. Wikidata’s genre for the song chooses among the families the artist’s own tags support, so a crossover artist’s country and pop records can differ; it may not move a song to a family the artist has no tag for, because its labels are loose (“pop music” turns up on everything). And #1 hits use Chris Dalla Riva’s hand-coded genre when its style pins the sound down (Disco, Hip Hop, Soul).'),
       HA.sourceTable(D),
       h('p', {}, '“Edited” marks acts where Spotify’s match was clearly the wrong artist (it filed Prince under bachata), or where its tags pointed away from the act’s actual hits. “Inferred” marks acts with no source data, mostly artists who arrived after mid-2021 and one-hit acts of the early 1960s. Those were classified from general music knowledge and left blank when uncertain. Treat both as informed guesses.'),
       h('h2', {}, 'Artists'),
@@ -259,7 +267,10 @@
       h('ul', {},
         h('li', {}, 'Weekly charts: ', link('https://github.com/mhollingshead/billboard-hot-100', 'mhollingshead/billboard-hot-100'), ', every Hot 100 since August 1958, refreshed weekly.'),
         h('li', {}, 'Artist genres: Spotify genre tags for Hot 100 songs through mid-2021, from ', link('https://github.com/rfordatascience/tidytuesday/tree/master/data/2021/2021-09-14', 'TidyTuesday 2021-09-14'), '.'),
-        h('li', {}, 'Number ones: Chris Dalla Riva’s dataset of every #1 (genre, style, writers, producers, label) through January 2025, from ', link('https://github.com/rfordatascience/tidytuesday/tree/main/data/2025/2025-08-26', 'TidyTuesday 2025-08-26'), '.')),
+        h('li', {}, 'Number ones: Chris Dalla Riva’s dataset of every #1 (genre, style, writers, producers, label) through January 2025, from ', link('https://github.com/rfordatascience/tidytuesday/tree/main/data/2025/2025-08-26', 'TidyTuesday 2025-08-26'), '.'),
+        h('li', {}, 'Official year-end lists: Wikipedia’s ', link('https://en.wikipedia.org/wiki/Billboard_Year-End_Hot_100_singles_of_1984', '“Billboard Year-End Hot 100 singles of <year>”'), ' pages.'),
+        h('li', {}, 'Song-level genres: ', link('https://www.wikidata.org/', 'Wikidata'), ', matched on title and performer.'),
+        h('li', {}, 'Record of the Year: ', link('https://en.wikipedia.org/wiki/Grammy_Award_for_Record_of_the_Year', 'Wikipedia'), '.')),
       h('p', { class: 'note' }, `Data built ${m.built}.`),
     ];
   }

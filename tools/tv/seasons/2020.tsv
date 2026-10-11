@@ -1,8 +1,8 @@
-# season=2020-21 unit=viewers_m source=https://en.wikipedia.org/wiki/Top-rated_United_States_television_programs_by_season complete=no
+# season=2020-21 unit=viewers_m source=https://en.wikipedia.org/wiki/Top-rated_United_States_television_programs_by_season complete=yes
 1	Sunday Night Football	NBC	16.50
 2	Thursday Night Football	FOX	13.42
 3	NCIS	CBS	12.58
-4	The Equalizer	?	12.07
+4	The Equalizer	CBS	12.07
 5	FBI	CBS	10.98
 6	60 Minutes	CBS	10.73
 7	Chicago Fire	NBC	10.23
@@ -16,14 +16,16 @@
 15	9-1-1: Lone Star	FOX	8.71
 16	Bull	CBS	8.59
 17	The Voice	NBC	8.40
-18	The Voice: Tuesday	?	8.30
+18	The Voice: Tuesday	NBC	8.30
 19	The Good Doctor	ABC	8.16
+19	Grey's Anatomy	ABC	8.16
 21	Law & Order: Organized Crime	NBC	7.83
 22	NCIS: Los Angeles	CBS	7.80
 23	The Masked Singer	FOX	7.56
 24	Magnum P.I.	CBS	7.48
 25	American Idol	ABC	7.42
-26	Big Sky	?	7.35
+26	Big Sky	ABC	7.35
 27	NCIS: New Orleans	CBS	7.22
 28	Celebrity Wheel of Fortune	ABC	7.15
-29	The Rookie	?	7.11
+29	The Rookie	ABC	7.11
+29	Station 19	ABC	7.11

@@ -108,3 +108,47 @@ Movies" / "NBC Saturday Movie").
 
 Show genres were classified from general knowledge (labelled as such in the app): no genre
 source was reachable, and these are well-known prime-time series.
+
+## 8. Sources once the network opened (October 2026)
+
+**TV.** The season tables are now parsed directly from Wikipedia's by-season page
+(`fetch-tv.mjs`), all 75 seasons complete. Checked against the earlier search
+transcriptions: 2,167 of 2,169 rows matched exactly. From 2019–20 the page's "Rating"
+column holds average viewers in millions, so those seasons are labelled as viewers.
+TVmaze adds premiere/end dates and IMDb ids and checks the genre calls (agrees on ~90%;
+where it differs it is usually TVmaze's coarse tagging, e.g. spy shows as Drama, so the
+call stands). Netflix's weekly US Top 10 (July 2021 on) is rolled up per year with the
+same 100/√rank points as the music charts, shown under the 2020s; Nielsen's own
+streaming rankings aren't published in a parseable form.
+
+**Movies.** Box Office Mojo's release-year view ranks every film by total domestic
+gross (top 200 a year); before 1977 its coverage is thin, so 1958–1976 use Wikipedia's
+"<year> in film" top 10s, which are in rentals. Re-releases are dropped. IMDb ids come
+from title + year matching (with a subtitle index for franchise films). Genre is a
+weighted vote between Wikidata's full genre list per film and IMDb's genres (IMDb's bulk
+file keeps three genres alphabetically and drops "Musical" from The Sound of Music).
+Two rules came out of reading every year's top 10: Wikidata stacks near-synonyms for
+mode genres (drama, melodrama, romance), so those count once, while premise genres
+(sci-fi, fantasy, horror) add up, which keeps Star Wars in Sci-Fi rather than Action;
+and "thriller" is a modifier worth one vote, not a premise, or every cop film becomes
+Horror & Thriller. Compound comedy labels ("action comedy") still win for Comedy, and
+superhero films are their own family. What the rules still got wrong in the top 10s
+(about 75 films: Top Gun, Funny Girl, the later Hunger Games) is in
+`tools/movies/overrides.json`, keyed by the source title and year.
+
+**Wikipedia access.** api.php and the REST API rate-limit shared cloud IPs; the plain
+/wiki/ article HTML is served from cache and works, so `lib/wiki.mjs` reads that.
+
+**Music.** Billboard's official year-end Hot 100 (Wikipedia, 1959 on) is matched to
+songs and offered as a second ranking on the Wall (6,408 of 6,701 entries matched).
+Song-level genres from Wikidata were first allowed to override the artist's Spotify
+family outright; a hand check of 60 changed #1s came out even (about as many made worse
+as better), because Wikidata puts "pop music" on almost everything. So a song-level
+genre now fills songs with no family and otherwise only chooses among the families the
+lead act's own tags support. The #1 dataset's decisive styles still come first.
+
+**Awards.** `fetch-awards.mjs` collects Best Picture winners (Wikidata, by IMDb id),
+Emmy best drama/comedy series and the Grammy for Record of the Year (Wikipedia winners
+tables). They are matched in each build and shown as a ★ on tiles, tooltips and panels.
+Misses are real: CODA never had a box-office run, and two Record of the Year winners
+(U2's "Walk On", Plant & Krauss's "Please Read the Letter") never made the Hot 100.

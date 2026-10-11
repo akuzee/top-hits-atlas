@@ -13,7 +13,7 @@
     const fams = raw.fams.map((f, i) => Object.assign({ i }, f, { slot: i < 8 ? i + 1 : 0 }));
     const seasons = raw.seasons;
     const byPeriod = new Map(seasons.map((se) => [se.y, []]));
-    const shows = raw.shows.map(([title, nets, fam, src, slots], i) => {
+    const shows = raw.shows.map(([title, nets, fam, src, slots, premiered, ended, imdb], i) => {
       // slots: every ranked appearance, two in a season for a show on two nights;
       // runs: the show's best slot per season, which is what its stats count.
       const all = slots.map(([si, rank, value, net, night]) => ({ p: seasons[si].y, si, rank, value, net, night }));
@@ -23,10 +23,12 @@
       let best = runs[0];
       for (const r of runs) if (r.rank < best.rank) best = r;
       const x = {
-        i, title, name: title, sub: nets, fam, src, runs, slots: all,
+        i, title, name: title, sub: nets, fam, src, runs, slots: all, premiered, ended, imdb,
         home: { p: best.p, rank: best.rank },
         first: runs[0].p, last: runs[runs.length - 1].p,
-        t0: runs[0].p + 0.7, t1: runs[runs.length - 1].p + 1.4,
+        // The lane spans the show's whole time on air when TVmaze knows it.
+        t0: premiered ? HA.yearFrac(premiered) : runs[0].p + 0.7,
+        t1: ended ? HA.yearFrac(ended) : runs[runs.length - 1].p + 1.4,
         weight: runs.reduce((t, r) => t + pts(r.rank), 0),
         no1: runs.filter((r) => r.rank === 1).length,
         top10: runs.filter((r) => r.rank <= 10).length,
@@ -35,6 +37,16 @@
       return x;
     });
     for (const list of byPeriod.values()) list.sort((a, b) => a.rank - b.rank || (b.value ?? 0) - (a.value ?? 0));
+    const emmys = new Map();
+    for (const [i, y, kind] of raw.awards?.emmy || []) {
+      const k = `${i}|${kind}`;
+      emmys.set(k, [...(emmys.get(k) || []), y]);
+    }
+    for (const [k, ys] of emmys) {
+      const [i, kind] = k.split('|'), x = shows[+i];
+      const line = `Emmy for Outstanding ${kind === 'drama' ? 'Drama' : 'Comedy'} Series (${ys.join(', ')})`;
+      x.award = x.award ? `${x.award}; ${line}` : line;
+    }
     const periods = seasons.map((se) => se.y);
     const first = periods[0], last = periods[periods.length - 1];
 
@@ -42,16 +54,17 @@
       id: 'tv', label: 'TV',
       noun: 'show', nouns: 'Shows', entityNoun: 'show', entityNouns: 'Shows',
       searchHint: 'Find a TV show',
+      awardNote: 'won the Emmy for best drama or comedy series',
       subtitle: `Nielsen season rankings · ${label(first)} – ${label(last)}`,
       tabs: [['wall', 'Wall'], ['genres', 'Genres'], ['lanes', 'Shows'], ['quiz', 'Quiz']],
       fams, hasUnknown: shows.some((x) => x.fam < 0),
-      srcLabels: ['No genre data', 'Genre classified by Claude from general knowledge'],
+      srcLabels: ['No genre data', 'Genre classified by Claude', 'Genre classified by Claude; TVmaze agrees'],
       items: shows, entities: shows, entitiesAreItems: true,
       periods, byPeriod, periodLabel: label, periodNoun: 'season',
       decadeLabel: (d) => (d === 2000 ? '2000s' : `’${String(d).slice(2)}s`),
       tip: (x, e) => {
         const at = e ? `${e.title ? HA.esc(e.title) + ': ' : ''}#${e.rank} in ${label(e.season ? e.season.y : x.home.p)}${e.value != null && e.season ? ` (${fmtValue(e.season, e.value)} ${(UNIT[e.season.unit] || UNIT.rating)[0]})` : ''} · ` : '';
-        return `<b>${HA.esc(x.title)}</b><div>${HA.esc(x.sub)}</div><div class="t-sub">${at}best #${x.home.rank} · ${HA.plural(x.runs.length, 'season')} in the top 30</div>`;
+        return `<b>${HA.esc(x.title)}</b><div>${HA.esc(x.sub)}</div><div class="t-sub">${at}best #${x.home.rank} · ${HA.plural(x.runs.length, 'season')} in the top 30</div>${HA.awardTip(x)}`;
       },
       searchSub: (x) => `${x.sub} · ${label(x.first)}${x.last > x.first ? '–' + String(x.last + 1).slice(-2) : ''} · best #${x.home.rank}`,
       open: openShow,
@@ -99,14 +112,14 @@
         yearOf: (x) => x.home.p,
         // Any season the show was a top-30 hit counts as exactly right.
         yearsOk: (x) => x.runs.flatMap((r) => [r.p, r.p + 1]),
-        firstOf: (x) => x.first,
-        firstText: (x) => `first reached the top 30 in ${label(x.first)}`,
-        firstPrompt: 'Which was a top-30 hit first?',
+        firstOf: (x) => (x.premiered ? HA.yearFrac(x.premiered) : x.first + 0.7),
+        firstText: (x) => (x.premiered ? `premiered ${HA.fmtMonthOf(x.premiered)}` : `first reached the top 30 in ${label(x.first)}`),
+        firstPrompt: 'Which premiered first?',
         facts: (x) => `best #${x.home.rank} in ${label(x.home.p)} · ${HA.plural(x.runs.length, 'season')} in the top 30 (${label(x.first)} – ${label(x.last)})`,
         levels: { smash: ['Top 10', 10], hits: ['Top 30', 30] },
         topPrompt: 'Which was the #1 show of the season?',
         topLabel: 'No. 1 of the season',
-        links: (x) => HA.searchLinks(`${x.title} TV series`, ['Wikipedia', 'IMDb', 'JustWatch']),
+        links: (x) => showLinks(x),
         yearPrompt: 'When was this show a top-30 hit?',
       },
       about: () => about(D, seasons, shows, raw.built),
@@ -125,23 +138,32 @@
       const f = famOf(row);
       HA.openDrawer(
         h('div', { class: 'd-fam' }, HA.swatch(f), f >= 0 ? fams[f].label : 'Genre unknown'),
-        h('div', { class: 'd-src' }, 'Streaming · genre classified by Claude'),
+        h('div', { class: 'd-src' }, 'Netflix US Top 10 · genre classified by Claude'),
         h('div', { class: 'd-title' }, row[1]),
         h('div', { class: 'd-credit' }, row[2]),
-        h('div', { class: 'd-stats' }, HA.stat('#' + row[0], `streaming, ${y.year}`), row[3] != null && HA.stat(row[3] + 'B', 'minutes viewed')),
+        h('div', { class: 'd-stats' }, HA.stat('#' + row[0], `on Netflix in ${y.year}`), row[3] != null && HA.stat(row[3], row[3] === 1 ? 'week in the top 10' : 'weeks in the top 10')),
         h('div', { class: 'd-section' }, h('div', { class: 'label-sm' }, 'Look it up'), HA.searchLinks(`${row[1]} TV series`, ['Wikipedia', 'IMDb', 'JustWatch'])));
     };
     return h('div', { style: { marginTop: '28px' } },
       h('div', { class: 'view-head' }, h('div', {},
-        h('h2', { class: 'section-h' }, 'Streaming’s biggest series'),
-        h('p', {}, 'Nielsen’s year-end streaming rankings, by minutes viewed in US homes, calendar years. Older series streamed in full (Suits, Grey’s Anatomy) compete with new originals.'))),
+        h('h2', { class: 'section-h' }, 'Netflix’s biggest series'),
+        h('p', {}, 'The broadcast rankings above no longer see streaming. These are each year’s top series on Netflix’s own weekly US Top 10, weighted by rank the same way as the music charts. Netflix only, and from July 2021; licensed reruns (Suits) compete with originals.'))),
       h('div', { class: 'scroll-x' }, h('div', { class: 'decade-grid' }, ys.map((y) => h('div', { class: 'year-col' },
-        h('h3', {}, String(y.year), h('small', {}, 'streaming')),
+        h('h3', {}, String(y.year), h('small', {}, y.complete ? 'Netflix' : 'Netflix, to date')),
         h('div', { class: 'tiles' }, y.rows.slice(0, topN).map((row) => {
           const f = famOf(row);
           return h('button', { class: 'tile' + (f < 0 ? ' unknown' : '') + (HA.lit(f) ? '' : ' dim'), style: { '--c': HA.famVar(f) }, onclick: () => openRow(row, y) },
-            h('span', { class: 'rk' }, row[0]), h('span', { class: 'tt' }, row[1]), h('span', { class: 'ar' }, `${row[3] != null ? row[3] + 'B min · ' : ''}${row[2]}`));
+            h('span', { class: 'rk' }, row[0]), h('span', { class: 'tt' }, row[1]), h('span', { class: 'ar' }, `${HA.plural(row[3], 'week')} in the top 10`));
         })))))));
+  }
+
+  function showLinks(x) {
+    const q = encodeURIComponent(`${x.title} TV series`);
+    return h('div', { class: 'listen' },
+      h('a', { href: x.imdb ? `https://www.imdb.com/title/${x.imdb}/` : `https://www.imdb.com/find/?q=${q}`, target: '_blank', rel: 'noopener' }, 'IMDb ↗'),
+      h('a', { href: `https://en.wikipedia.org/w/index.php?search=${q}`, target: '_blank', rel: 'noopener' }, 'Wikipedia ↗'),
+      h('a', { href: `https://www.youtube.com/results?search_query=${encodeURIComponent(x.title + ' opening theme')}`, target: '_blank', rel: 'noopener' }, 'Theme ↗'),
+      h('a', { href: `https://www.justwatch.com/us/search?q=${encodeURIComponent(x.title)}`, target: '_blank', rel: 'noopener' }, 'JustWatch ↗'));
   }
 
   function runChart(x, width, height, big) {
@@ -179,7 +201,7 @@
         HA.stat('#' + x.home.rank, `best, in ${label(x.home.p)}`),
         HA.stat(x.runs.length, 'seasons in the top 30'),
         HA.stat(x.top10, 'seasons in the top 10'),
-        HA.stat(`${x.first}–${String(x.last + 1).slice(-2)}`, 'first to last ranked')),
+        x.premiered ? HA.stat(`${x.premiered.slice(0, 4)}–${x.ended ? x.ended.slice(2, 4) : 'now'}`, 'on the air') : HA.stat(`${x.first}–${String(x.last + 1).slice(-2)}`, 'first to last ranked')),
       h('div', { class: 'label-sm' }, 'Rank by season'),
       h('div', { class: 'd-run' }, runChart(x, 360, 140, false)),
       h('div', { class: 'd-section' }, h('div', { class: 'label-sm' }, 'Look it up'), D.quiz.links(x)));
@@ -192,7 +214,7 @@
       h('div', { class: 'artist-head' },
         h('div', {}, h('div', { class: 'd-fam' }, HA.swatch(x.fam), x.fam >= 0 ? D.fams[x.fam].label : 'Genre unknown', h('span', { class: 'note' }, ' · ' + D.srcLabels[x.src])), h('h1', {}, x.title)),
         h('div', { class: 'stats' },
-          HA.stat(x.sub, 'network'),
+          HA.stat(x.sub, x.premiered ? `on air ${x.premiered.slice(0, 4)}–${x.ended ? x.ended.slice(0, 4) : 'now'}` : 'network'),
           HA.stat(x.runs.length, 'seasons in the top 30'),
           HA.stat(x.top10, 'top-10 seasons'),
           HA.stat(x.no1, 'seasons at #1'))),
@@ -219,11 +241,17 @@
       h('p', {}, 'Broadcast rankings increasingly miss what people watch: cable hits never appear, and from about 2015 streaming series are invisible to these lists. The recent columns show what broadcast audiences watched, which leans toward football, procedurals and reality.'),
       h('h2', {}, 'Genres'),
       HA.famTable(D),
-      h('p', {}, 'Each show’s genre was classified by Claude from general knowledge of the show, since no genre database was reachable while building this. They are broad calls about the show’s main identity: a cop show with comedy is Crime & Legal, a sketch-comedy hour is Variety.'),
+      h('p', {}, 'Each show’s genre was classified by Claude from general knowledge of the show, then checked against TVmaze’s genre tags, which agree on about 90% of shows; each show’s panel says whether they agree. They are broad calls about the show’s main identity: a cop show with comedy is Crime & Legal, a sketch-comedy hour is Variety. Where TVmaze differs the call stands, since it files spy shows under Drama and 1950s anthologies under Comedy.'),
       HA.sourceTable(D),
       h('h2', {}, 'How the data was gathered'),
-      h('p', {}, 'The build machine could not reach Wikipedia, so each season’s table was transcribed from Wikipedia through a web-search tool, with every row checked for order and rating consistency. Each season keeps its source link. Transcription errors are possible; a wrong row is more likely in the lower ranks than in the top ten.' + (incomplete.length ? ` Seasons with missing rows: ${incomplete.join(', ')}.` : '')),
-      h('p', { class: 'note' }, 'Source: ', HA.extLink('https://en.wikipedia.org/wiki/Top-rated_United_States_television_programs_by_season', 'Wikipedia, Top-rated United States television programs by season'), ` (Nielsen Media Research). Data built ${built}.`),
+      h('p', {}, 'Each season’s table is parsed straight from Wikipedia’s season pages. An earlier hand transcription agreed with the parse on all but 2 of 2,169 rows.' + (incomplete.length ? ` Seasons with missing rows: ${incomplete.join(', ')}.` : '') + ' A ★ marks shows that won the Emmy for best drama or comedy series; the years are ceremony years.'),
+      h('h2', {}, 'Sources'),
+      h('ul', {},
+        h('li', {}, 'Season rankings: ', HA.extLink('https://en.wikipedia.org/wiki/Top-rated_United_States_television_programs_by_season', 'Wikipedia, Top-rated United States television programs by season'), ' (Nielsen Media Research).'),
+        h('li', {}, 'Premiere and end dates, IMDb ids, genre check: ', HA.extLink('https://www.tvmaze.com/api', 'TVmaze'), '.'),
+        h('li', {}, 'Streaming: ', HA.extLink('https://www.netflix.com/tudum/top10', 'Netflix Top 10'), ', weekly US lists since mid-2021.'),
+        h('li', {}, 'Emmy winners: Wikipedia’s pages for ', HA.extLink('https://en.wikipedia.org/wiki/Primetime_Emmy_Award_for_Outstanding_Drama_Series', 'Outstanding Drama Series'), ' and ', HA.extLink('https://en.wikipedia.org/wiki/Primetime_Emmy_Award_for_Outstanding_Comedy_Series', 'Outstanding Comedy Series'), '.')),
+      h('p', { class: 'note' }, `Data built ${built}.`),
     ];
   }
 

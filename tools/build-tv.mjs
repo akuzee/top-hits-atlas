@@ -10,6 +10,7 @@ const here = (p) => new URL(p, import.meta.url).pathname;
 const SEASONS = here('./tv/seasons/');
 const STREAMING = here('./tv/streaming/');
 const fixes = JSON.parse(readFileSync(here('./tv/overrides.json'), 'utf8'));
+const tvmaze = existsSync(here('./cache/tvmaze.json')) ? JSON.parse(readFileSync(here('./cache/tvmaze.json'), 'utf8')) : {};
 const families = existsSync(here('./tv/families.json')) ? JSON.parse(readFileSync(here('./tv/families.json'), 'utf8')) : {};
 
 // Families in river stack order; slot = position in the shared validated palette.
@@ -26,7 +27,7 @@ export const FAMILIES = [
 ];
 const FAM = Object.fromEntries(FAMILIES.map((f, i) => [f.id, i]));
 // Where a show's family came from (the app labels every show with it).
-const SRC = { NONE: 0, CLAUDE: 1 };
+const SRC = { NONE: 0, CLAUDE: 1, CLAUDE_TVMAZE: 2 };
 
 const fold = (s) => s.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase();
 export const normShow = (s) => fold(s).replace(/&/g, 'and').replace(/^the\s+/, '').replace(/[^a-z0-9]/g, '');
@@ -63,6 +64,18 @@ function splitNights(rows) {
   return rows;
 }
 
+function tvmazeFamily(m) {
+  const t = m.type, g = m.genres || [];
+  if (t === 'Sports') return 'sports';
+  if (t === 'News' || t === 'Documentary') return 'news';
+  if (t === 'Talk Show' || t === 'Variety') return 'variety';
+  if (t === 'Game Show' || t === 'Reality') return 'reality';
+  if (g.includes('Western')) return 'western';
+  if (g.includes('Crime') || g.includes('Legal')) return 'crime';
+  if (g.includes('Comedy')) return 'comedy';
+  return g.length ? 'drama' : null;
+}
+
 function readSeasons() {
   const out = [];
   for (const f of readdirSync(SEASONS).filter((f) => /^\d{4}\.tsv$/.test(f)).sort()) {
@@ -78,19 +91,29 @@ function readSeasons() {
   return out;
 }
 
-// Nielsen's year-end streaming top 10s (minutes viewed), for the years the
-// broadcast tables stop capturing. Optional: absent until collected.
+// Netflix's official weekly US Top 10 for TV (July 2021 on), rolled up into
+// each calendar year's biggest series with the same 100/√rank weekly points
+// the music charts use. Netflix-only, but the one clean chart of the
+// streaming era, which the broadcast lists no longer see.
+const NETFLIX = here('./cache/netflix/all-weeks-countries.tsv');
 function readStreaming() {
-  if (!existsSync(STREAMING)) return [];
-  return readdirSync(STREAMING).filter((f) => /^\d{4}\.tsv$/.test(f)).sort().map((f) => {
-    const [head, ...lines] = readFileSync(STREAMING + f, 'utf8').trim().split('\n');
-    const meta = Object.fromEntries([...head.matchAll(/(\w+)=(\S+)/g)].map((m) => [m[1], m[2]]));
-    const rows = lines.filter((l) => l.trim() && !l.startsWith('#')).map((l) => {
-      const [rank, title, platform, value] = l.split('\t').map((x) => (x ?? '').trim());
-      return { rank: +rank, title, platform, value: value ? +value : null };
-    });
-    return { year: +f.slice(0, 4), unit: meta.unit || 'minutes_b', source: meta.source || '', complete: meta.complete !== 'no', rows };
-  });
+  if (!existsSync(NETFLIX)) return [];
+  const years = new Map();
+  for (const line of readFileSync(NETFLIX, 'utf8').split('\n').slice(1)) {
+    const [country, , week, category, rank, title] = line.split('\t');
+    if (country !== 'United States' || category !== 'TV') continue;
+    const y = +week.slice(0, 4);
+    if (!years.has(y)) years.set(y, new Map());
+    const m = years.get(y);
+    const e = m.get(title) || { title, pts: 0, weeks: 0 };
+    e.pts += 100 / Math.sqrt(+rank);
+    e.weeks++;
+    m.set(title, e);
+  }
+  return [...years].sort((a, b) => a[0] - b[0]).map(([year, m]) => ({
+    year, unit: 'weeks', source: 'https://www.netflix.com/tudum/top10', complete: year < new Date().getFullYear(),
+    rows: [...m.values()].sort((a, b) => b.pts - a.pts).slice(0, 10).map((e, k) => ({ rank: k + 1, title: e.title, platform: 'Netflix', value: e.weeks })),
+  }));
 }
 
 function validate(seasons) {
@@ -140,7 +163,12 @@ function build() {
       if (f == null) unclassified.push(title);
       // Networks in the order the show appeared on them ("ABC, NBC" for Taxi).
       const nets = [...new Set(sh.runs.map((r) => r[3]).filter(Boolean))];
-      return [title, nets.join(', '), f == null ? -1 : FAM[f], f == null ? SRC.NONE : SRC.CLAUDE, sh.runs];
+      // TVmaze (fetch-tvmaze.mjs): premiere/end dates, IMDb id, and a check on
+      // the genre call. It agrees on ~90% of shows; where it differs the call
+      // stands (TVmaze files spy shows under Drama and 1950s anthologies under Comedy).
+      const m = tvmaze[title];
+      const src = f == null ? SRC.NONE : m && tvmazeFamily(m) === f ? SRC.CLAUDE_TVMAZE : SRC.CLAUDE;
+      return [title, nets.join(', '), f == null ? -1 : FAM[f], src, sh.runs, m?.premiered || '', m?.ended || '', m?.imdb || ''];
     }),
   };
   // Streaming rows point at the broadcast show when the same series is in both
@@ -155,6 +183,20 @@ function build() {
       return [r.rank, r.title, r.platform, r.value, showIdx.has(k) ? showIdx.get(k) : -1, f == null ? -1 : FAM[f]];
     }),
   }));
+  // Emmy best drama and comedy series (tools/fetch-awards.mjs), as
+  // [show index, ceremony year, 'drama' | 'comedy'] for shows that ranked.
+  const awardsFile = here('./cache/awards.json');
+  if (existsSync(awardsFile)) {
+    const aw = JSON.parse(readFileSync(awardsFile, 'utf8'));
+    out.awards = { emmy: [] };
+    for (const kind of ['drama', 'comedy']) {
+      for (const [y, title] of Object.entries(aw[kind === 'drama' ? 'emmyDrama' : 'emmyComedy'])) {
+        const k = normShow(ALIAS.get(normShow(title)) ?? title);
+        if (showIdx.has(k)) out.awards.emmy.push([showIdx.get(k), +y, kind]);
+      }
+    }
+    console.log(`Emmy series wins by ranked shows: ${out.awards.emmy.length}`);
+  }
   writeFileSync(here('../data/tv.json'), JSON.stringify(out));
   writeFileSync(here('./cache/tv-shows.tsv'), out.shows.map((s) => [s[0], s[1], s[4].length, s[4].map(([si]) => seasons[si].y)[0]].join('\t')).join('\n'));
   console.log(`${seasons.length} seasons (${seasons.filter((s) => !s.complete).length} incomplete), ${out.shows.length} shows, ${unclassified.length} without a family`);

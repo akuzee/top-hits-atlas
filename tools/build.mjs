@@ -2,8 +2,8 @@
 //   node tools/build.mjs
 // Also writes tools/cache/review.tsv: the top acts with their genre evidence,
 // which is what you read when deciding on entries for overrides.json.
-import { readFileSync, writeFileSync } from 'node:fs';
-import { FAMILIES, FAM_INDEX, familyOf, cdrFamily } from './genres.mjs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { FAMILIES, FAM_INDEX, familyOf, familyScores, clearFamily, cdrFamily } from './genres.mjs';
 
 const here = (p) => new URL(p, import.meta.url).pathname;
 const RAW = here('./cache/raw/');
@@ -11,7 +11,7 @@ const fixes = JSON.parse(readFileSync(here('./overrides.json'), 'utf8'));
 
 // Where an act's family came from. The app shows anything other than SPOTIFY
 // or SONG with a marker, so inferred data never passes as sourced data.
-export const SRC = { NONE: 0, SPOTIFY: 1, SONG: 2, CORRECTED: 3, INFERRED: 4 };
+export const SRC = { NONE: 0, SPOTIFY: 1, SONG: 2, CORRECTED: 3, INFERRED: 4, SONG_WD: 5 };
 
 // ── text normalisation ────────────────────────────────────────────────────────
 const fold = (s) => s.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -222,6 +222,24 @@ function build() {
     const a = s.acts.find((x) => x.fam);
     [s.fam, s.src] = a ? [a.fam, a.src] : [null, SRC.NONE];
   }
+  // Song-level genres from Wikidata (tools/fetch-songgenres.mjs) show an
+  // artist's change of style, but they lean on generic labels ("pop music"),
+  // and letting them override outright was a wash on a hand check of 60 #1s.
+  // So they fill songs with no family, and otherwise only choose among the
+  // families the lead act's own tags already support (Taylor Swift: country,
+  // then pop). The #1 dataset, below, beats both where its style is decisive.
+  const songGenresFile = here('./cache/wikidata/song-genres.json');
+  const songGenres = existsSync(songGenresFile) ? JSON.parse(readFileSync(songGenresFile, 'utf8')) : {};
+  let wdSongs = 0;
+  for (const s of songs) {
+    const lead = s.acts[0] && [...s.acts[0].names].sort((x, y) => y[1] - x[1])[0][0];
+    const g = songGenres[`${s.title}|${lead}`];
+    const f = g && g.length ? clearFamily(g.map((x) => x.toLowerCase())) : null;
+    if (!f || f === s.fam || famOverride.has(s.acts[0]?.key)) continue;
+    if (s.fam && !familyScores(s.acts[0]?.tags ?? [])[f]) continue;
+    [s.fam, s.src] = [f, SRC.SONG_WD]; wdSongs++;
+  }
+
   const no1 = {};
   const byTitle = new Map();
   songs.forEach((s, i) => {
@@ -247,6 +265,28 @@ function build() {
     matched++;
   }
 
+  // Billboard's official year-end lists (tools/fetch-yearend.mjs), matched to
+  // songs by title, the years the song charted, and artist.
+  const yeFile = here('./cache/yearend.json');
+  const yearEnd = {};
+  let yeTotal = 0, yeMatched = 0;
+  if (existsSync(yeFile)) {
+    const titleIdx = new Map();
+    songs.forEach((s, i) => { const k = normTitle(s.title); if (!titleIdx.has(k)) titleIdx.set(k, []); titleIdx.get(k).push(i); });
+    for (const [y, rows] of Object.entries(JSON.parse(readFileSync(yeFile, 'utf8')))) {
+      yearEnd[y] = [];
+      for (const [rank, title, artist] of rows) {
+        yeTotal++;
+        // "Hey Jude" / "Revolution": double A-sides list both titles.
+        const cands = [...new Set(title.split(/\s*\/\s*|"\s*"/).flatMap((t) => titleIdx.get(normTitle(t.replace(/"/g, ''))) || []))]
+          .filter((i) => { const s = songs[i]; return year(s.segs[0][0]) <= +y && year(s.segs[s.segs.length - 1][0]) >= +y - 1; });
+        const na = normName(artist);
+        const best = cands.find((i) => songs[i].acts.some((a) => na.includes(a.key) || a.key.includes(na))) ?? cands[0];
+        if (best != null) { yearEnd[y].push([rank, best]); yeMatched++; }
+      }
+    }
+  }
+
   // Emit, indexing acts and tags compactly.
   const actList = [...acts.values()];
   actList.forEach((a, i) => { a.i = i; });
@@ -263,6 +303,8 @@ function build() {
     acts: actList.map((a) => [mode(a.names), famI(a.fam), a.src, a.tags.map((t) => tagIdx.get(t))]),
     songs: songs.map((s) => [s.title, s.credit, s.acts.map((a) => a.i), s.nLead, famI(s.fam), s.src, s.segs]),
     no1,
+    yearEnd,
+    awards: grammys(songs),
   };
   writeFileSync(here('../data/music.json'), JSON.stringify(out));
 
@@ -275,10 +317,29 @@ function build() {
   for (const s of songs) srcCount[s.src] = (srcCount[s.src] || 0) + 1;
   console.log(`${charts.dates.length} weeks, ${songs.length} songs, ${actList.length} acts`);
   console.log(`#1 dataset: ${matched}/${cdr.length} matched; spotify mismatches rejected: ${rejected.length}`);
-  console.log('songs by genre source', srcCount);
+  console.log('songs by genre source', srcCount, `(song-level from Wikidata: ${wdSongs})`);
+  console.log(`official year-end entries matched: ${yeMatched}/${yeTotal}`);
   console.log('wrote data/music.json', (JSON.stringify(out).length / 1e6).toFixed(2) + 'MB');
   return { rejected };
 }
 
 const { rejected } = build();
 if (process.argv.includes('--rejected')) for (const [k, t] of rejected) console.log(k, '→', t.join(', '));
+
+// Grammy Record of the Year winners that charted (tools/fetch-awards.mjs), as
+// [song index, ceremony year]. Title and lead act must both match.
+function grammys(songs) {
+  const file = here('./cache/awards.json');
+  if (!existsSync(file)) return {};
+  // Chart and award titles differ in medleys, film credits and articles:
+  // "Aquarius/Let The Sunshine In (The Flesh Failures)", "Taste Of Honey".
+  const core = (t) => normTitle(t.replace(/\s*\(.*?\)\s*/g, ' ').replace(/"/g, '').split('/')[0].trim().replace(/^(the|a)\s+/i, ''));
+  const out = [];
+  for (const [y, [record, artist]] of Object.entries(JSON.parse(readFileSync(file, 'utf8')).grammyRecord)) {
+    const lead = normName(artist.split(/ & | and | featuring | feat\. | with |, /i)[0]);
+    const i = songs.findIndex((s) => core(s.title) === core(record) && s.acts.some((a) => [...a.names.keys()].some((n) => normName(n).startsWith(lead) || lead.startsWith(normName(n)))));
+    if (i >= 0) out.push([i, +y]); else console.log('  Grammy record not on the chart:', y, record, '—', artist);
+  }
+  console.log(`Grammy Records of the Year matched: ${out.length}`);
+  return { grammy: out };
+}

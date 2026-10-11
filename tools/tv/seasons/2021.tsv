@@ -1,4 +1,4 @@
-# season=2021-22 unit=viewers_m source=https://en.wikipedia.org/wiki/Top-rated_United_States_television_programs_by_season complete=no
+# season=2021-22 unit=viewers_m source=https://en.wikipedia.org/wiki/Top-rated_United_States_television_programs_by_season complete=yes
 1	Sunday Night Football	NBC	18.00
 2	Thursday Night Football	FOX	15.40
 3	NCIS	CBS	10.90
@@ -11,7 +11,7 @@
 10	Chicago P.D.	NBC	9.15
 11	Chicago Med	NBC	9.09
 12	FBI: Most Wanted	CBS	8.72
-13	Ghosts	?	8.41
+13	Ghosts	CBS	8.41
 14	NCIS: Hawaiʻi	CBS	8.28
 15	FBI: International	CBS	8.21
 16	The Voice	NBC	8.12
@@ -28,3 +28,4 @@
 27	9-1-1: Lone Star	FOX	6.88
 28	Law & Order: Special Victims Unit	NBC	6.83
 29	CSI: Vegas	CBS	6.80
+29	The Good Doctor	ABC	6.80
