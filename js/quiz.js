@@ -52,9 +52,11 @@
     };
     const ents = sc.ent != null ? [D.entities[sc.ent]]
       : Q.ents.filter((e) => famOk(e) && mostlyIn(e) && (!sc.no1 || Q.entItems(e).some(Q.isNo1))).sort(byFame);
-    // Familiar draws from the most-known fifth of the scope; Deeper from the next two fifths.
-    const tier = (list) => {
-      const n = Math.max(30, Math.round(list.length * 0.2));
+    // Familiar draws from the best-known fifth of the scope's songs, films or
+    // shows; Deeper from the next two fifths. Artists and people are many more
+    // per hit, so their familiar tier is the top 8%.
+    const tier = (list, frac = 0.2) => {
+      const n = Math.max(25, Math.round(list.length * frac));
       if (list.length <= n) return list;
       return level === 'deeper' ? list.slice(n, n * 3) : list.slice(0, n);
     };
@@ -76,7 +78,7 @@
     return {
       level, pool, ents, inScope, famOk, top: tier(pool),
       item: picker('i', tier(pool), pool),
-      ent: picker('e', tier(ents), ents),
+      ent: picker('e', tier(ents, 0.08), ents),
       year: () => (periods.length ? periods[K().rnd(periods.length)] : null),
       decade: () => (decades.length ? decades[K().rnd(decades.length)] : null),
     };
