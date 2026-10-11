@@ -53,6 +53,8 @@
 
 * { box-sizing: border-box; }
 html, body { background: var(--bg); color: var(--ink); }
+body { margin: 0; }
+[hidden] { display: none !important; }
 body { font-family: var(--font-body); font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
 button, input, select { font: inherit; color: inherit; }
 a { color: inherit; }

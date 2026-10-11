@@ -1,5 +1,7 @@
 # Hit Atlas
 
+Live: https://akuzee.github.io/top-hits-atlas/ (GitHub Pages, served from `main` as is; no build step).
+
 The hits of every year since the late 1950s, laid out so you can build a mental map of pop
 culture: which songs and TV shows were big, when, in what genre, and how careers moved.
 

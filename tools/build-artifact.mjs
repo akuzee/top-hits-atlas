@@ -1,7 +1,7 @@
 // Inlines CSS, JS and data into one HTML file for publishing as an artifact.
 //   node tools/build-artifact.mjs   → dist/hit-atlas.html (+ dist/preview.html)
 // The artifact host wraps the page in its own <!doctype>/<head>/<body>, so the
-// main output is a fragment; preview.html adds that wrapper for local screenshots.
+// main output is a fragment; preview.html adds a wrapper back for local screenshots.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 
 const here = (p) => new URL(p, import.meta.url).pathname;
@@ -9,7 +9,13 @@ const read = (p) => readFileSync(here('../' + p), 'utf8');
 // "</" inside an inline <script> could close it early.
 const safe = (t) => t.replace(/<\//g, '<\\/');
 
-let html = read('index.html');
+// index.html is a full page, which GitHub Pages serves as is. The artifact host
+// adds its own document wrapper, so the artifact keeps only what is inside it.
+let html = read('index.html')
+  .replace(/^<!doctype html>\s*<html[^>]*>\s*<head>\s*<meta charset[^>]*>\s*<meta name="viewport"[^>]*>\s*/i, '')
+  .replace(/<\/head>\s*<body>\s*/i, '')
+  .replace(/\s*<\/body>\s*<\/html>\s*$/i, '\n');
+if (/<\/?(html|head|body)\b/i.test(html)) throw new Error('index.html wrapper not stripped');
 html = html.replace('<link rel="stylesheet" href="css/styles.css">', () => `<style>\n${read('css/styles.css')}</style>`);
 const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>\n?/g)];
 const js = scripts.map((m) => `// ── ${m[1]}\n${read(m[1])}`).join('\n');
