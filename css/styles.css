@@ -80,7 +80,8 @@ a { color: inherit; }
 }
 .tabs a:hover { background: var(--surface-2); color: var(--ink); }
 .tabs a[aria-current="page"] { background: var(--ink); color: var(--bg); }
-.search { position: relative; margin-left: auto; flex: 0 1 280px; min-width: 180px; }
+.quiz-open { margin-left: auto; padding: 5px 14px; }
+.search { position: relative; flex: 0 1 280px; min-width: 180px; }
 .search input {
   width: 100%; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line-2);
   background: var(--surface); outline: none;
@@ -217,21 +218,12 @@ svg .baseline { stroke: var(--line-2); }
 .tag-list { display: flex; gap: 4px; flex-wrap: wrap; }
 .tag { font-size: 11px; border: 1px solid var(--line-2); border-radius: 999px; padding: 1px 7px; color: var(--ink-2); }
 
-/* ── quiz ─────────────────────────────────────────────────────────────────── */
-.quiz { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 18px; align-items: start; }
-.quiz-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: clamp(16px, 3vw, 28px); min-width: 0; }
-.quiz-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.quiz-side .panel { min-width: 0; }
-.quiz-side .seg { flex-wrap: wrap; border-radius: 14px; }
-.quiz-side .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+/* ── quiz (in the drawer) ────────────────────────────────────────────────── */
 .q-prompt { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
-.q-song { font-family: var(--font-display); font-weight: 900; font-size: clamp(30px, 5vw, 50px); line-height: 1; margin: 8px 0 6px; text-wrap: balance; }
-.q-artist { font-size: 18px; color: var(--ink-2); }
 .q-year { font-family: var(--font-display); font-weight: 900; font-size: 64px; line-height: 1; font-variant-numeric: tabular-nums; }
 .q-slider { width: 100%; margin: 10px 0 4px; accent-color: var(--ink); }
 .q-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
 .q-choices { display: grid; gap: 10px; margin-top: 16px; }
-.q-choices.two { grid-template-columns: 1fr 1fr; }
 .q-choice { text-align: left; border: 1px solid var(--line-2); background: var(--surface); border-radius: 10px; padding: 12px 14px; cursor: pointer; min-width: 0; }
 .q-choice:hover:not(:disabled) { border-color: var(--ink); }
 .q-choice b { display: block; font-size: 16px; font-weight: 700; }
@@ -241,11 +233,11 @@ svg .baseline { stroke: var(--line-2); }
 .q-choice.wrong { border-color: var(--bad); box-shadow: inset 0 0 0 1px var(--bad); }
 .q-result { margin-top: 16px; padding: 12px 14px; border-radius: 10px; background: var(--surface-2); }
 .q-result b { font-size: 16px; }
-/* quiz, in the drawer */
-.quiz-slot { margin-left: auto; }
 .qz-scope { font-family: var(--font-display); font-weight: 900; font-size: 26px; line-height: 1.05; margin: 2px 40px 10px 0; text-wrap: balance; }
-.qz-controls { gap: 6px; margin-bottom: 16px; }
-.qz-controls .seg { flex-wrap: wrap; }
+.qz-settings { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
+.qz-range { display: inline-flex; align-items: center; gap: 6px; }
+.qz-settings select { border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 5px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.qz-settings .seg button { font-size: 13px; }
 .qz-progress { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
 .qz-progress .dots { margin-top: 0; }
 .qz-progress .dots i { width: 10px; height: 10px; }
@@ -265,7 +257,6 @@ svg .baseline { stroke: var(--line-2); }
 .qz-log .half .mark { color: var(--muted); }
 .linkish { border: 0; background: none; padding: 0; text-align: left; color: inherit; font: inherit; cursor: pointer; }
 .linkish:hover b { text-decoration: underline; }
-.score-big { font-family: var(--font-display); font-weight: 900; font-size: 44px; line-height: 1; font-variant-numeric: tabular-nums; }
 .dots { display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; }
 .dots i { width: 14px; height: 14px; border-radius: 3px; background: var(--surface-2); display: block; }
 .dots i.on { background: color-mix(in oklab, var(--ink) calc(var(--v) * 1%), var(--surface-2)); }
@@ -321,8 +312,10 @@ svg .baseline { stroke: var(--line-2); }
   .mast { position: static; }
   .wm-sub { display: none; }
   .search { flex-basis: 100%; margin-left: 0; }
-  .quiz { grid-template-columns: minmax(0, 1fr); }
-  .q-choices.two { grid-template-columns: 1fr; }
+  /* The Quiz button joins the medium switcher's row rather than taking one of its own. */
+  .tabs { order: 2; }
+  .search { order: 3; }
+  .quiz-open { order: 1; }
   .drawer { top: auto; left: 0; width: 100%; max-height: 82vh; border-left: 0; border-top: 1px solid var(--line); border-radius: 16px 16px 0 0; }
 }
 @media (prefers-reduced-motion: no-preference) {

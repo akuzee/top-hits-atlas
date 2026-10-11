@@ -15,9 +15,9 @@ Views:
 - **No. 1s**: every week's #1 on a calendar (one row per year) or as a list.
 - **Genres**: a 100% river of each genre's share of chart points, quarter by quarter.
 - **Artists**: career lanes for each decade's leading acts; any artist's week-by-week trajectory.
-- **Quiz me**: a button on each view opens ten questions on what it shows (a decade, the
-  No. 1s, one artist), weighted toward what most often comes up in general-knowledge
-  quizzes. See DECISIONS.md §9.
+- **Quiz**: a header button opens ten questions on the current medium (pick the years,
+  the difficulty and a genre), weighted toward what most often comes up in
+  general-knowledge quizzes. See DECISIONS.md §9.
 
 A ★ marks award winners: the Grammy for Record of the Year, the Oscar for Best Picture,
 and the Emmy for best drama or comedy series.

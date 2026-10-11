@@ -155,9 +155,11 @@ Misses are real: CODA never had a box-office run, and two Record of the Year win
 
 ## 9. Quizzes: what to ask, measured on 544k Jeopardy! clues (October 2026)
 
-The quiz is a side feature of an explorer, so it has no tab: each view has a "Quiz me
-on …" button that opens ten questions in the drawer, scoped to what the view shows (the
-Wall's decade, the No. 1s, one artist or person, the genre spotlight).
+The quiz is a side feature of an explorer, so it has no tab: a Quiz button in the header
+opens ten questions on the current medium in the drawer, with three settings kept per
+medium (a range of decades, Familiar or Deeper cuts, one genre or all). An earlier version
+scoped a quiz to each view (the Wall's decade, the No. 1s, one artist); one quiz per
+medium with a few settings proved simpler to reach for.
 
 What to ask was measured rather than guessed. `tools/fetch-clues.mjs` matches the J!
 Archive's 544,110 clues (jwolle1/jeopardy_clue_dataset, 1984–2026) against every song,

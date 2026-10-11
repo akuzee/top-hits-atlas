@@ -3,7 +3,7 @@
 (function () {
   const HA = globalThis.HA, h = HA.h;
   const CELL_H = 6;
-  let root, canvas, axis, grid, extra, quizSlot, decadeSeg, nSeg, orderSeg, listSeg, head, cap, hover = null, list = 'main', order = 'genre', decade = 1980, topN = 20, mountedFor = null;
+  let root, canvas, axis, grid, extra, decadeSeg, nSeg, orderSeg, listSeg, head, cap, hover = null, list = 'main', order = 'genre', decade = 1980, topN = 20, mountedFor = null;
 
   const decades = () => [...new Set(HA.D.periods.map((p) => Math.floor(p / 10) * 10))];
   const decadeLabel = (d) => {
@@ -26,7 +26,7 @@
     cap = h('span', { class: 'label-sm' });
     root.append(head,
       h('div', { class: 'mosaic-wrap' }, h('div', { class: 'mosaic-cap' }, cap, orderSeg), canvas, axis),
-      h('div', { class: 'controls', style: { marginBottom: '12px' } }, decadeSeg, quizSlot = h('span', { class: 'quiz-slot' })),
+      h('div', { class: 'controls', style: { marginBottom: '12px' } }, decadeSeg),
       h('div', { class: 'scroll-x' }, grid), extra = h('div', {}));
     canvas.addEventListener('pointermove', onMove);
     canvas.addEventListener('pointerleave', () => { hover = null; HA.untip(); drawMosaic(); });
@@ -134,8 +134,6 @@
     orderSeg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.k === order)));
     listSeg?.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.k === list)));
     const ps = D.periods.filter((p) => Math.floor(p / 10) * 10 === decade);
-    const dl = decadeLabel(decade), named = /s$/.test(dl) ? 'the ' + dl : dl;
-    quizSlot.replaceChildren(HA.quizButton({ years: [decade, decade + 9], label: named }, `Quiz me on ${named}`));
     grid.replaceChildren(...ps.map((p) => {
       const partial = D.wall.partial(p);
       return h('div', { class: 'year-col', 'data-p': p },

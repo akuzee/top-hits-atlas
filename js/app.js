@@ -79,7 +79,7 @@
     if (!mounted.has(view)) { HA.views[view].mount(el); mounted.add(view); }
     HA.untip();
     HA.views[view].render();
-    if (quiz) HA.quiz.open({});
+    if (quiz) HA.quiz.open();
   }
 
   async function boot() {
@@ -88,6 +88,7 @@
     document.getElementById('loading').remove();
     HA.initSearch();
     document.getElementById('drawer-close').addEventListener('click', HA.closeDrawer);
+    document.getElementById('quiz-open').addEventListener('click', () => HA.quiz.open());
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') HA.closeDrawer(); });
     // Canvas and SVG fills read colours once, so repaint when the theme flips.
     matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => HA.emit('theme'));

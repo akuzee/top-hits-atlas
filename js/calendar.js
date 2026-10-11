@@ -89,7 +89,7 @@
     const D = HA.D;
     if (mountedFor !== D) {
       mountedFor = D;
-      head.replaceChildren(h('div', {}, h('h1', {}, D.calendar.title), h('p', {}, D.calendar.facts())), h('div', { class: 'controls' }, modeSeg, HA.quizButton({ no1: true }, 'Quiz me on No. 1s')));
+      head.replaceChildren(h('div', {}, h('h1', {}, D.calendar.title), h('p', {}, D.calendar.facts())), h('div', { class: 'controls' }, modeSeg));
     }
     modeSeg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.k === mode)));
     body.replaceChildren(mode === 'cal' ? calendar() : list());

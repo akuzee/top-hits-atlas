@@ -16,10 +16,10 @@ let fail = 0;
 const bad = (msg) => { fail++; if (fail < 30) console.log('  ✗ ' + msg); };
 for (const id of ['music', 'movies', 'tv']) {
   const D = (HA.D = HA.domains[id].build(JSON.parse(readFileSync(here(`../data/${id}.json`), 'utf8'))));
+  // The settings a person can pick: every single decade, some wider ranges, each genre.
   const decades = [...new Set(D.periods.map((p) => Math.floor(p / 10) * 10))];
-  const topEnts = D.entitiesAreItems ? [] : D.entities.map((e, i) => [e.fame || 0, i]).sort((a, b) => b[0] - a[0]).slice(0, 8).map(([, i]) => i);
-  const scopes = [{}, { focus: 'ents' }, ...decades.map((d) => ({ years: [d, d + 9], label: `${d}s` })), ...D.fams.map((f, i) => ({ fam: i })),
-    ...(D.tabs.some(([v]) => v === 'no1s') ? [{ no1: true }] : []), ...topEnts.filter((i) => HA.quiz.canEnt(i)).map((i) => ({ ent: i }))];
+  const scopes = [{}, ...decades.map((d) => ({ years: [d, d + 9] })), { years: [1960, 1989] }, { years: [1990, 2029] },
+    ...D.fams.map((f, i) => ({ fam: i })), { years: [1980, 1989], fam: 0 }];
   const seen = new Map();
   let n = 0;
   for (const sc of scopes) for (const level of ['familiar', 'deeper']) {

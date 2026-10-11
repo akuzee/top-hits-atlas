@@ -1,9 +1,9 @@
-// Quiz: ten questions on what's on screen, opened from a view's "Quiz me"
-// button into the side drawer rather than a tab of its own, since the app is
-// an explorer first. Scope comes from the view (a decade, the No. 1s, one
-// artist) plus the genre spotlight. Question kinds live in questions.js; which
-// songs, films and shows get asked follows each item's fame (set in the domain
-// files). Missed items come back in later rounds.
+// Quiz: ten questions on the current medium, opened from the header's Quiz
+// button into the side drawer rather than a tab of its own, since the app is an
+// explorer first. Three settings, kept per medium: the years, the difficulty
+// and the genre. Question kinds live in questions.js; which songs, films and
+// shows get asked follows each item's fame (set in the domain files). Missed
+// items come back in later rounds.
 (function () {
   const HA = globalThis.HA, h = HA.h;
   const ROUND = 10, REVIEW = 0.3, MISSED_MAX = 80;
@@ -21,37 +21,40 @@
     HA.store.set(missedKey(), [...s].slice(-MISSED_MAX));
   }
 
-  function scopeLabel(sc) {
-    const D = HA.D;
-    const what = sc.ent != null ? D.entities[sc.ent].name
-      : sc.no1 ? (D.id === 'music' ? 'No. 1 hits' : 'weekend No. 1s')
-        : sc.years ? sc.label : 'all years';
-    return sc.fam != null ? `${D.fams[sc.fam].label}: ${what}` : what;
+  // Settings, per medium: {from, to} decades, level ('familiar' | 'deeper'), fam (null for all).
+  const decadesOf = (D) => [...new Set(D.periods.map((p) => Math.floor(p / 10) * 10))];
+  function settings() {
+    const D = HA.D, ds = decadesOf(D);
+    const s = Object.assign({ from: ds[0], to: ds[ds.length - 1], level: 'familiar', fam: null }, HA.store.get(`quiz:settings:${D.id}`, {}));
+    if (!ds.includes(s.from)) s.from = ds[0];
+    if (!ds.includes(s.to)) s.to = ds[ds.length - 1];
+    if (s.from > s.to) [s.from, s.to] = [s.to, s.from];
+    if (s.fam != null && !D.fams[s.fam]) s.fam = null;
+    return s;
   }
-
-  // Kinds that don't fit a scope: year and decade questions have no place in a
-  // No. 1s or single-artist quiz.
-  const NOT_FOR_NO1 = new Set(['biggest', 'yearhit', 'top', 'peak', 'whohits', 'emmy', 'network', 'grammy', 'bp']);
+  const scopeOf = (st) => {
+    const ds = decadesOf(HA.D);
+    const all = st.from === ds[0] && st.to === ds[ds.length - 1];
+    return { years: all ? null : [st.from, st.to + 9], fam: st.fam };
+  };
 
   function context(sc, level) {
     const D = HA.D, Q = kit(D);
     const famOk = (x) => sc.fam == null || x.fam === sc.fam;
     const yearsOf = Q.years || ((x) => [Q.yearOf(x)]);
     const inYears = (ys) => !sc.years || ys.some((y) => y >= sc.years[0] && y <= sc.years[1]);
-    const entSet = sc.ent != null ? new Set(Q.entItems(D.entities[sc.ent])) : null;
-    const inScope = (x) => famOk(x) && inYears(yearsOf(x)) && (!sc.no1 || Q.isNo1(x)) && (!entSet || entSet.has(x));
+    const inScope = (x) => famOk(x) && inYears(yearsOf(x));
     const byFame = (a, b) => b.fame - a.fame;
     const pool = Q.items.filter(inScope).sort(byFame);
-    // An artist belongs to a decade's quiz when a good share of their fame is
-    // from it: the Beatles had a 1982 hit, but they are not an '80s act.
+    // An artist belongs to a range when a good share of their fame is from it:
+    // the Beatles had a 1982 hit, but they are not an '80s act.
     const mostlyIn = (e) => {
       if (!sc.years) return true;
       let t = 0, a = 0;
       for (const x of Q.entItems(e)) { t += x.fame; if (inYears(yearsOf(x))) a += x.fame; }
       return t > 0 && a / t >= 0.4;
     };
-    const ents = sc.ent != null ? [D.entities[sc.ent]]
-      : Q.ents.filter((e) => famOk(e) && mostlyIn(e) && (!sc.no1 || Q.entItems(e).some(Q.isNo1))).sort(byFame);
+    const ents = Q.ents.filter((e) => famOk(e) && mostlyIn(e)).sort(byFame);
     // Familiar draws from the best-known fifth of the scope's songs, films or
     // shows; Deeper from the next two fifths. Artists and people are many more
     // per hit, so their familiar tier is the top 8%.
@@ -67,8 +70,7 @@
       let x = null;
       if (again.length && Math.random() < REVIEW) x = again[K().rnd(again.length)];
       else { const cands = tierList.filter(ok); if (cands.length) x = K().pick(cands); }
-      // A small scope (one artist's handful of hits) may ask about the same
-      // item twice, in different ways.
+      // A small pool (TV news shows) may ask about the same item twice, in different ways.
       if (!x && all.length < 15) { const cands = all.filter(filter); if (cands.length) x = K().pick(cands); }
       if (x) used.add(tag + x.i);
       return x;
@@ -84,19 +86,8 @@
     };
   }
 
-  function kinds(sc) {
-    const Q = kit(HA.D);
-    return Object.entries(Q.kinds).flatMap(([id, k]) => {
-      let w = k.w;
-      if (sc.ent != null) w = Q.entKinds.includes(id) ? k.wEnt || k.w : 0;
-      else if (sc.no1 && NOT_FOR_NO1.has(id)) w = 0;
-      else if (sc.focus === 'ents' && k.ent) w *= 2.5;
-      return w > 0 ? [{ id, w, make: k.make }] : [];
-    });
-  }
-
   function nextQuestion() {
-    const ks = kinds(game.scope);
+    const ks = Object.entries(kit(HA.D).kinds).map(([id, k]) => ({ id, w: k.w, make: k.make }));
     for (let tries = 0; tries < 40 && ks.length; tries++) {
       let k = K().pick(ks, (x) => x.w);
       // Avoid the same kind twice running when there's a choice.
@@ -113,9 +104,9 @@
     return null;
   }
 
-  function start(sc) {
-    const level = HA.store.get('quiz:level', 'familiar');
-    game = { scope: sc, level, ctx: context(sc, level), n: 0, results: [], log: [], q: null, lastKind: null, asked: new Set() };
+  function start() {
+    const st = settings(), sc = scopeOf(st);
+    game = { st, scope: sc, level: st.level, ctx: context(sc, st.level), n: 0, results: [], log: [], q: null, lastKind: null, asked: new Set() };
     game.q = nextQuestion();
     render(true);
   }
@@ -138,17 +129,32 @@
 
   // ── rendering ──────────────────────────────────────────────────────────────
   const fmt = (n) => (n % 1 ? `${Math.floor(n)}½` : String(n));
+  // Changing a setting starts a fresh round.
+  function change(patch) {
+    HA.store.set(`quiz:settings:${HA.D.id}`, Object.assign(settings(), patch));
+    start();
+  }
+  function settingsRow() {
+    const D = HA.D, st = game.st, ds = decadesOf(D);
+    const select = (label, value, opts, onPick) => h('select', { 'aria-label': label, onchange: (e) => onPick(e.target.value) },
+      opts.map(([v, l]) => h('option', { value: v, selected: String(v) === String(value) ? true : null }, l)));
+    const dec = (d) => `${d}s`;
+    return h('div', { class: 'qz-settings' },
+      h('span', { class: 'qz-range' },
+        select('From', st.from, ds.map((d) => [d, dec(d)]), (v) => change({ from: +v, to: Math.max(+v, st.to) })),
+        h('span', { class: 'note' }, 'to'),
+        select('To', st.to, ds.map((d) => [d, dec(d)]), (v) => change({ to: +v, from: Math.min(+v, st.from) }))),
+      h('div', { class: 'seg', role: 'group', 'aria-label': 'Difficulty' }, [['familiar', 'Familiar'], ['deeper', 'Deeper cuts']].map(([k, l]) =>
+        h('button', { 'aria-pressed': String(st.level === k), onclick: () => change({ level: k }) }, l))),
+      select('Genre', st.fam ?? '', [['', 'All genres'], ...D.fams.map((f, i) => [i, f.label])], (v) => change({ fam: v === '' ? null : +v })));
+  }
+
   function render(fresh) {
-    const D = HA.D, sc = game.scope;
-    const seg = (opts, cur, onPick) => h('div', { class: 'seg', role: 'group' }, opts.map(([k, l]) => h('button', { 'aria-pressed': String(k === cur), onclick: () => onPick(k) }, l)));
-    const scopes = [[scopeLabel(sc), sc]];
-    if (sc.years || sc.no1 || sc.ent != null) scopes.push(['All years', { fam: sc.fam }]);
+    const D = HA.D;
     const node = h('div', { class: 'qz' },
       h('div', { class: 'label-sm' }, 'Quiz'),
-      h('div', { class: 'qz-scope' }, scopeLabel(sc)),
-      h('div', { class: 'controls qz-controls' },
-        scopes.length > 1 && seg(scopes.map(([l], k) => [k, l]), 0, (k) => start(scopes[k][1])),
-        seg([['familiar', 'Familiar'], ['deeper', 'Deeper cuts']], game.level, (k) => { HA.store.set('quiz:level', k); start(sc); })),
+      h('div', { class: 'qz-scope' }, D.label),
+      settingsRow(),
       game.over ? summary() : card());
     const body = document.getElementById('drawer-body'), drawer = document.getElementById('drawer');
     if (fresh || drawer.hidden || !body.querySelector('.qz')) HA.openDrawer(node);
@@ -165,7 +171,7 @@
 
   function card() {
     const D = HA.D, q = game.q;
-    if (!q) return h('div', { class: 'q-result' }, h('b', {}, 'Not enough here for a quiz.'), h('div', { class: 'note' }, 'Try all years, a different level, or clear the genre spotlight.'));
+    if (!q) return h('div', { class: 'q-result' }, h('b', {}, 'Not enough here for a quiz.'), h('div', { class: 'note' }, 'Try a wider range of years, the other difficulty, or all genres.'));
     const parts = [progress(),
       h('div', { class: 'q-prompt' }, q.kicker),
       h('div', { class: 'qz-q' + (q.prompt.length > 42 ? ' long' : '') }, q.prompt),
@@ -219,42 +225,27 @@
         h('button', { class: 'linkish', onclick: () => (q.entity ? HA.showEntity(q.subject.i) : HA.open(q.subject)) },
           h('span', { class: 'note' }, q.kicker + ' '), q.prompt.length > 60 ? q.prompt.slice(0, 58) + '…' : q.prompt, h('b', {}, ' → ' + answerOf(q)))))),
       h('div', { class: 'note' }, missed().size ? 'Ones you missed come back in later rounds.' : ''),
-      h('div', { class: 'q-row' }, h('button', { class: 'btn primary qz-focus', onclick: () => start(game.scope) }, 'Another round')));
+      h('div', { class: 'q-row' }, h('button', { class: 'btn primary qz-focus', onclick: start }, 'Another round')));
   }
 
   // ── entry points ───────────────────────────────────────────────────────────
-  // scope: {years: [y0, y1], label} | {no1: true} | {ent: i} | {focus: 'ents'} | {}
   HA.quiz = {
-    open(scope = {}) {
-      const sc = Object.assign({}, scope, { fam: HA.state.spot ?? null });
-      const same = game && !game.over && JSON.stringify(game.scope) === JSON.stringify(sc);
-      if (same) render(true); else start(sc);
-    },
-    // A single artist or person needs a few hits to make a round.
-    canEnt(i) { const Q = kit(HA.D); return Q.entKinds.length > 0 && Q.entItems(HA.D.entities[i]).length >= 3; },
-    // n questions for a scope without rendering, for tools/test-quiz.mjs.
+    // Reopening mid-round picks up where it left off.
+    open() { if (game && !game.over) render(true); else start(); },
+    // n questions for {years: [y0, y1] | null, fam} without rendering, for tools/test-quiz.mjs.
     sample(scope, level, n) {
-      const saved = game;
-      game = { scope: Object.assign({ fam: null }, scope), level, ctx: context(Object.assign({ fam: null }, scope), level), lastKind: null, asked: new Set() };
+      const saved = game, sc = Object.assign({ years: null, fam: null }, scope);
+      game = { scope: sc, level, ctx: context(sc, level), lastKind: null, asked: new Set() };
       const out = [];
       for (let k = 0; k < n; k++) { const q = nextQuestion(); if (!q) break; out.push(q); }
       game = saved;
       return out;
     },
   };
-  // label may be a function, re-read when the genre spotlight changes.
-  HA.quizButton = (scope, label) => {
-    const text = typeof label === 'function' ? label : () => label;
-    const b = h('button', { class: 'btn quiz-btn', onclick: () => HA.quiz.open(scope) }, text());
-    b._label = text;
-    return b;
-  };
-
   HA.on('domain', () => { game = null; });
-  HA.on('spot', () => document.querySelectorAll('.quiz-btn').forEach((b) => { if (b._label) b.textContent = b._label(); }));
   document.addEventListener('keydown', (e) => {
     const box = document.querySelector('#drawer:not([hidden]) .qz');
-    if (!box || !game || e.target.closest?.('input[type=text], input[type=search]')) return;
+    if (!box || !game || e.target.closest?.('input[type=text], input[type=search], select')) return;
     if (/^[1-4]$/.test(e.key)) box.querySelector(`.q-choice[data-k="${e.key}"]:not(:disabled)`)?.click();
     else if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') (box.querySelector('.qz-next') || box.querySelector('.qz-lock'))?.click();
   });

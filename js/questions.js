@@ -81,7 +81,7 @@
         return { kicker: 'Who had the hit', prompt: quote(s.title), sub: String(s.year), subject: s,
           choices: K.choices(a, wrong, (x) => x.name), reveal: `${s.credit} · ${peakText(s)} in ${s.year}` };
       } },
-      song: { w: 4, ent: true, make(c) {
+      song: { w: 4, make(c) {
         const a = c.ent((x) => leadSongs(x).some(c.inScope));
         if (!a) return null;
         const own = leadSongs(a).filter(c.inScope);
@@ -92,7 +92,7 @@
           choices: K.choices(s, wrong, (x) => quote(x.title), (x) => String(x.year), (x) => (x === s ? '' : x.credit)),
           reveal: `${quote(s.title)} · ${peakText(s)} in ${s.year}` };
       } },
-      whohits: { w: 3, ent: true, make(c) {
+      whohits: { w: 3, make(c) {
         const a = c.ent((x) => leadSongs(x).length >= 3);
         if (!a) return null;
         const top = leadSongs(a).sort((x, y) => y.fame - x.fame).slice(0, 3);
@@ -107,7 +107,7 @@
         return { kicker: 'When was this a hit', prompt: quote(s.title), sub: s.credit, subject: s,
           year: s.year, ok: [s.year, m.weekYear[s.peakWeek]], tol: [1, 3], reveal: `${peakText(s)} in ${s.year}` };
       } },
-      peak: { w: 2, ent: true, make(c) {
+      peak: { w: 2, make(c) {
         const a = c.ent((x) => leadSongs(x).length >= 2 && peakYear(x) != null);
         if (!a) return null;
         const best = leadSongs(a).sort((x, y) => y.fame - x.fame)[0];
@@ -147,7 +147,7 @@
         return { kicker: 'Chart-toppers', prompt: 'Which of these went to No. 1?', subject: s,
           choices: K.choices(s, wrong, (x) => quote(x.title), (x) => `${lead(x).name}, ${x.year}`, (x) => (x.peak === 1 ? 'No. 1' : `peaked at No. ${x.peak}`)), reveal: `${quote(s.title)}: ${peakText(s)}` };
       } },
-      first: { w: 0.7, wEnt: 2, make(c) {
+      first: { w: 0.7, make(c) {
         const a = c.item();
         if (!a) return null;
         const b = K.pick(c.top.filter((x) => x !== a && Math.abs(x.year - a.year) >= 2 && Math.abs(x.year - a.year) <= 10));
@@ -170,9 +170,6 @@
       ents: acts.filter((a) => leadSongs(a).length),
       yearOf: (s) => s.year,
       entItems: (a) => leadSongs(a),
-      entYears: (a) => leadSongs(a).map((s) => s.year),
-      isNo1: (s) => s.peak === 1,
-      entKinds: ['song', 'when', 'first', 'peak'],
     };
   };
 
@@ -229,14 +226,14 @@
         return { kicker: 'What year did it come out', prompt: f.title, sub: f.sub, subject: f, year: f.year, tol: [1, 3],
           reveal: `${f.year} · No. ${f.rank} at the box office that year` };
       } },
-      peak: { w: 1.5, ent: true, make(c) {
+      peak: { w: 1.5, make(c) {
         const p = c.ent((x) => x.films.length >= 3);
         if (!p) return null;
         const fs = filmsOf(p).sort((x, y) => y.fame - x.fame);
         return { kicker: 'When were they at their peak', prompt: p.name, sub: isDirector(p) ? 'Director' : 'Actor', subject: p, entity: true,
           year: peakYear(p), tol: [3, 6], reveal: `Hits ${Math.min(...fs.map((f) => f.year))}–${Math.max(...fs.map((f) => f.year))}; best known: ${fs.slice(0, 2).map((f) => `${f.title} (${f.year})`).join(', ')}` };
       } },
-      starfilm: { w: 2, ent: true, make(c) {
+      starfilm: { w: 2, make(c) {
         const p = c.ent((x) => filmsOf(x).some(c.inScope));
         if (!p) return null;
         const f = K.pick(filmsOf(p).filter(c.inScope), K.known);
@@ -271,7 +268,7 @@
         return { kicker: String(y), prompt: 'Which of these came out that year?', subject: f,
           choices: K.choices(f, wrong, (x) => x.title, () => '', (x) => String(x.year)), reveal: `${f.title} was No. ${f.rank} of ${y}` };
       } },
-      first: { w: 0.7, wEnt: 2, make(c) {
+      first: { w: 0.7, make(c) {
         const a = c.item();
         if (!a) return null;
         const b = K.pick(c.top.filter((x) => x !== a && Math.abs(x.year - a.year) >= 2 && Math.abs(x.year - a.year) <= 12));
@@ -287,9 +284,6 @@
       ents: people.filter((p) => p.films.length >= 2),
       yearOf: (f) => f.year,
       entItems: (p) => filmsOf(p),
-      entYears: (p) => filmsOf(p).map((f) => f.year),
-      isNo1: (f) => f.wk1 > 0 || f.rank === 1,
-      entKinds: ['starfilm', 'when', 'first', 'peak'],
     };
   };
 
@@ -375,8 +369,6 @@
       // A show belongs to every season it ranked in.
       yearOf: (x) => x.home.p,
       years: (x) => x.runs.map((r) => r.p),
-      isNo1: (x) => x.no1 > 0,
-      entKinds: [],
     };
   };
 })();
