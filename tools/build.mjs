@@ -4,6 +4,7 @@
 // which is what you read when deciding on entries for overrides.json.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { FAMILIES, FAM_INDEX, familyOf, familyScores, clearFamily, cdrFamily } from './genres.mjs';
+import { clueMap } from './lib/clues.mjs';
 
 const here = (p) => new URL(p, import.meta.url).pathname;
 const RAW = here('./cache/raw/');
@@ -306,6 +307,7 @@ function build() {
     yearEnd,
     awards: grammys(songs),
   };
+  out.clues = { songs: clueMap('songs', out.songs.map((r) => `${r[0]}|${r[1]}`)), acts: clueMap('acts', out.acts.map((r) => r[0])) };
   writeFileSync(here('../data/music.json'), JSON.stringify(out));
 
   // Review sheet: the acts that matter most, with the evidence for their family.

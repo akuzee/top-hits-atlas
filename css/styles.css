@@ -241,6 +241,30 @@ svg .baseline { stroke: var(--line-2); }
 .q-choice.wrong { border-color: var(--bad); box-shadow: inset 0 0 0 1px var(--bad); }
 .q-result { margin-top: 16px; padding: 12px 14px; border-radius: 10px; background: var(--surface-2); }
 .q-result b { font-size: 16px; }
+/* quiz, in the drawer */
+.quiz-slot { margin-left: auto; }
+.qz-scope { font-family: var(--font-display); font-weight: 900; font-size: 26px; line-height: 1.05; margin: 2px 40px 10px 0; text-wrap: balance; }
+.qz-controls { gap: 6px; margin-bottom: 16px; }
+.qz-controls .seg { flex-wrap: wrap; }
+.qz-progress { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
+.qz-progress .dots { margin-top: 0; }
+.qz-progress .dots i { width: 10px; height: 10px; }
+.qz-q { font-family: var(--font-display); font-weight: 900; font-size: 30px; line-height: 1.05; margin: 6px 0 4px; text-wrap: balance; overflow-wrap: anywhere; }
+.qz-q.long { font-family: var(--font-body); font-weight: 650; font-size: 18px; line-height: 1.35; }
+.qz-sub { color: var(--ink-2); font-size: 14px; }
+.qz .q-choices { margin-top: 14px; gap: 8px; }
+.qz .q-choice { padding: 10px 12px; }
+.qz .q-choice b { font-size: 15px; }
+.qz .q-year { font-size: 52px; margin-top: 14px; }
+.qz-ends { display: flex; justify-content: space-between; }
+.qz-log { list-style: none; padding: 0; margin: 14px 0; display: grid; gap: 6px; }
+.qz-log li { display: grid; grid-template-columns: 18px 1fr; gap: 6px; align-items: baseline; font-size: 13px; }
+.qz-log .mark { font-weight: 800; }
+.qz-log .ok .mark { color: var(--good); }
+.qz-log .miss .mark { color: var(--bad); }
+.qz-log .half .mark { color: var(--muted); }
+.linkish { border: 0; background: none; padding: 0; text-align: left; color: inherit; font: inherit; cursor: pointer; }
+.linkish:hover b { text-decoration: underline; }
 .score-big { font-family: var(--font-display); font-weight: 900; font-size: 44px; line-height: 1; font-variant-numeric: tabular-nums; }
 .dots { display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; }
 .dots i { width: 14px; height: 14px; border-radius: 3px; background: var(--surface-2); display: block; }

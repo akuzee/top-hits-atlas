@@ -25,7 +25,13 @@
     // Billboard's official year-end Hot 100 (from Wikipedia), where matched to a song.
     const yearEnd = new Map(Object.entries(raw.yearEnd || {}).map(([y, rows]) => [+y, rows.map(([rank, i]) => ({ it: m.songs[i], rank, value: 101 - rank }))]));
     for (const [y, rows] of yearEnd) for (const e of rows) if (!e.it.ye || e.rank < e.it.ye.rank) e.it.ye = { y, rank: e.rank };
-    for (const [i, y] of raw.awards?.grammy || []) m.songs[i].award = `Grammy Record of the Year (${y})`;
+    for (const [i, y] of raw.awards?.grammy || []) Object.assign(m.songs[i], { award: `Grammy Record of the Year (${y})`, grammy: y });
+    // Fame, for choosing quiz questions: how often a song or act comes up in
+    // quiz archives (tools/fetch-clues.mjs), plus a prior from its peak, since a
+    // #1 comes up about three times as often as another top-10 hit.
+    const clues = raw.clues || { songs: {}, acts: {} };
+    for (const x of m.songs) x.fame = (clues.songs[x.i] || 0) + (x.peak === 1 ? 3.2 : x.peak <= 10 ? 1.2 : x.peak <= 40 ? 0.16 : 0.02) + x.pts / 3000;
+    for (const a of m.acts) a.fame = (clues.acts[a.i] || 0) + 0.25 * a.songs.reduce((t, i) => t + (m.songs[i].acts.indexOf(a.i) < m.songs[i].nLead ? m.songs[i].fame : 0), 0);
     const peakText = (x) => (x.peak === 1 ? `#1 for ${HA.plural(x.wk1, 'week')}` : `peaked #${x.peak}`);
 
     const D = {
@@ -34,7 +40,7 @@
       searchHint: 'Find a song or artist',
       awardNote: 'won the Grammy for Record of the Year',
       subtitle: `Billboard Hot 100 · Aug 1958 – ${HA.fmtMonthOf(wk(m.weeks.length - 1))}`,
-      tabs: [['wall', 'Wall'], ['no1s', 'No. 1s'], ['genres', 'Genres'], ['lanes', 'Artists'], ['quiz', 'Quiz']],
+      tabs: [['wall', 'Wall'], ['no1s', 'No. 1s'], ['genres', 'Genres'], ['lanes', 'Artists']],
       fams, hasUnknown: true, srcLabels: HA.SRC_LABEL,
       items: m.songs, entities: m.acts,
       periods: m.years, byPeriod, periodLabel: String, periodNoun: 'chart year',
@@ -84,18 +90,7 @@
       entityPage: trajectory,
       about: () => about(m),
 
-      quiz: {
-        yearOf: (x) => x.year,
-        // December hits count for either year: the chart year or the calendar year.
-        yearsOk: (x) => [x.year, m.weekYear[x.peakWeek]],
-        firstOf: (x) => x.first,
-        firstText: (x) => `debuted ${HA.fmtMonthOf(wk(x.first))}`,
-        firstPrompt: 'Which was a hit first?',
-        facts: (x) => `${peakText(x)} · #${x.yearRank} of ${x.year} · debuted ${HA.fmtMonthOf(wk(x.first))}`,
-        levels: { smash: ['Smashes', 10], hits: ['Top 40', 40], deep: ['Deep cuts', 100] },
-        topPrompt: 'Which was the biggest hit of the chart year?',
-        links: (x) => HA.searchLinks(`${x.title} ${x.credit}`, ['YouTube', 'Spotify', 'Apple Music']),
-      },
+      links: (x) => HA.searchLinks(`${x.title} ${x.credit}`, ['YouTube', 'Spotify', 'Apple Music']),
     };
     return D;
   }
@@ -167,7 +162,7 @@
     }
     const lead = m.acts[x.acts[0]];
     if (lead && lead.tags.length) nodes.push(h('div', { class: 'd-section' }, h('div', { class: 'label-sm' }, `Spotify genres for ${lead.name}`), h('div', { class: 'tag-list' }, lead.tags.map((t) => h('span', { class: 'tag' }, t)))));
-    nodes.push(h('div', { class: 'd-section' }, h('div', { class: 'label-sm' }, 'Listen'), D.quiz.links(x)));
+    nodes.push(h('div', { class: 'd-section' }, h('div', { class: 'label-sm' }, 'Listen'), D.links(x)));
     HA.openDrawer(nodes);
   }
 

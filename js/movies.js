@@ -12,7 +12,10 @@
     const fams = raw.fams.map((f, i) => Object.assign({ i }, f, { slot: i < 8 ? i + 1 : 0 }));
     const W = raw.weekends;
     const people = raw.people.map((name, i) => ({ i, name, films: [], dir: 0, act: 0, weight: 0, fam: -1, src: 0 }));
-    const films = raw.films.map(([title, year, rank, value, dist, fam, src, imdb, rating, votes, runtime, dirs, cast, runs, opening, open, genres], i) => {
+    for (const i of raw.actresses || []) people[i].woman = true;
+    const films = raw.films.map(([title, year, rank, value, dist, fam, src, imdb, rating, votes, runtime, dirs, rawCast, runs, opening, open, genres], i) => {
+      // IMDb lists an actor twice when they play two parts (Nicole Kidman in Bewitched).
+      const cast = [...new Set(rawCast)];
       const [mon, day] = (open || '').split(' ');
       const t0 = year + (MON[mon] != null ? (MON[mon] + (+day || 15) / 31) / 12 : 0.5);
       const x = {
@@ -27,6 +30,10 @@
       return x;
     });
     for (const i of raw.awards?.bestPicture || []) films[i].award = 'Oscar for Best Picture';
+    // Fame, for choosing quiz questions: quiz-archive mentions (tools/fetch-clues.mjs),
+    // box-office rank, and IMDb votes for lasting popularity.
+    const clues = raw.clues || { films: {}, people: {} };
+    for (const f of films) f.fame = (clues.films[f.i] || 0) + (f.rank === 1 ? 3 : f.rank <= 10 ? 1.4 : f.rank <= 25 ? 0.5 : 0.15) + Math.log10(1 + (f.votes || 0)) / 2;
     for (const p of people) {
       const fs = p.films.map((i) => films[i]);
       p.weight = fs.reduce((t, f) => t + pts(f.rank), 0);
@@ -38,6 +45,7 @@
       p.fam = [...tally].sort((a, b) => b[1] - a[1])[0]?.[0] ?? -1;
       p.role = p.dir >= p.act ? 'Director' : 'Actor';
       p.sub = `${p.role} · ${HA.plural(fs.length, 'film')} · ${Math.floor(Math.min(...fs.map((f) => f.year)))}–${Math.max(...fs.map((f) => f.year))}`;
+      p.fame = (clues.people[p.i] || 0) + 0.25 * fs.reduce((t, f) => t + f.fame, 0);
     }
     const years = [...new Set(films.map((f) => f.year))].sort((a, b) => a - b);
     const byPeriod = new Map(years.map((y) => [y, []]));
@@ -63,7 +71,7 @@
       searchHint: 'Find a film, director or star',
       awardNote: 'won the Oscar for Best Picture',
       subtitle: `US box office · ${first} – ${last}`,
-      tabs: [['wall', 'Wall'], no1Runs.length && ['no1s', 'No. 1s'], ['genres', 'Genres'], ['lanes', 'People'], ['quiz', 'Quiz']].filter(Boolean),
+      tabs: [['wall', 'Wall'], no1Runs.length && ['no1s', 'No. 1s'], ['genres', 'Genres'], ['lanes', 'People']].filter(Boolean),
       fams, hasUnknown: films.some((f) => f.fam < 0),
       srcLabels: ['No genre data', 'Genre from Wikidata', 'Genre from IMDb', 'Genre edited by hand'],
       items: films, entities: people,
@@ -120,19 +128,7 @@
       },
       entityPage: personPage,
 
-      quiz: {
-        yearOf: (f) => f.year,
-        yearsOk: (f) => [f.year],
-        firstOf: (f) => f.t0,
-        firstText: (f) => `came out ${f.open ? f.open + ', ' : 'in '}${f.year}`,
-        firstPrompt: 'Which came out first?',
-        facts: (f) => `${peakText(f)} · ${money(f.value)}${f.unit === 'rentals' ? ' in rentals' : ''}${f.dirs.length ? ' · dir. ' + f.sub : ''}`,
-        levels: { smash: ['Top 5', 5], hits: ['Top 20', 20], deep: ['Top 50', 50] },
-        topPrompt: 'Which was the year’s highest-grossing film?',
-        topLabel: 'Top film of the year',
-        yearPrompt: 'What year did this film come out?',
-        links: (f) => filmLinks(f),
-      },
+      links: (f) => filmLinks(f),
       about: () => about(D, films, raw),
     };
     return D;

@@ -43,7 +43,8 @@
       }
     });
     return h('div', {},
-      h('div', { class: 'view-head' }, h('div', {}, h('h1', {}, L.title), h('p', {}, L.blurb))),
+      h('div', { class: 'view-head' }, h('div', {}, h('h1', {}, L.title), h('p', {}, L.blurb)),
+        h('div', { class: 'controls' }, HA.quizButton({ focus: 'ents' }, `Quiz me on ${D.entityNouns.toLowerCase()}`))),
       h('div', { class: 'lanes-wrap scroll-x' }, h('div', { class: 'lanes' }, svg)));
   }
 
@@ -52,7 +53,8 @@
     const e = HA.state.entity;
     if (e != null && HA.D.entities[e]) {
       body.replaceChildren(
-        h('div', { class: 'controls', style: { marginBottom: '10px' } }, h('button', { class: 'btn', onclick: () => { HA.state.entity = null; render(); } }, '← All ' + HA.D.lanes.title.toLowerCase())),
+        h('div', { class: 'controls', style: { marginBottom: '10px' } }, h('button', { class: 'btn', onclick: () => { HA.state.entity = null; render(); } }, '← All ' + HA.D.lanes.title.toLowerCase()),
+          !HA.D.entitiesAreItems && HA.quiz.canEnt(e) && HA.quizButton({ ent: e }, `Quiz me on ${HA.D.entities[e].name}`)),
         HA.D.entityPage(e, render, root.clientWidth - 26));
     } else body.replaceChildren(lanes());
   }

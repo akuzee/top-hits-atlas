@@ -22,7 +22,8 @@
   function setup() {
     const D = HA.D;
     mountedFor = D;
-    head.replaceChildren(h('div', {}, h('h1', {}, D.river.title), h('p', {}, D.river.blurb)));
+    head.replaceChildren(h('div', {}, h('h1', {}, D.river.title), h('p', {}, D.river.blurb)),
+      h('div', { class: 'controls' }, HA.quizButton({}, () => (HA.state.spot != null ? `Quiz me on ${D.fams[HA.state.spot].label}` : 'Quiz me on every genre'))));
     period = HA.pref('riverPeriod', D.river.defaultPeriod);
     if (!D.byPeriod.has(period)) period = D.periods[Math.floor(D.periods.length / 2)];
   }

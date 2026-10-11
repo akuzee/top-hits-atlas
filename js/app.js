@@ -67,7 +67,10 @@
       renderTabs();
       HA.emit('domain');
     }
+    // Old links to the quiz tab open the Wall with the quiz alongside.
+    const quiz = view === 'quiz';
     if (view !== 'about' && !D.tabs.some(([v]) => v === view)) view = 'wall';
+    if (quiz) history.replaceState(null, '', `#${dom}-wall`);
     HA.state.view = view;
     renderSwitcher();
     for (const el of document.querySelectorAll('main > .view')) el.hidden = el.id !== 'view-' + view;
@@ -76,6 +79,7 @@
     if (!mounted.has(view)) { HA.views[view].mount(el); mounted.add(view); }
     HA.untip();
     HA.views[view].render();
+    if (quiz) HA.quiz.open({});
   }
 
   async function boot() {

@@ -46,7 +46,12 @@
       const [i, kind] = k.split('|'), x = shows[+i];
       const line = `Emmy for Outstanding ${kind === 'drama' ? 'Drama' : 'Comedy'} Series (${ys.join(', ')})`;
       x.award = x.award ? `${x.award}; ${line}` : line;
+      x.emmys = [...(x.emmys || []), ...ys.map((y) => [y, kind])];
     }
+    // Fame, for choosing quiz questions: quiz-archive mentions (tools/fetch-clues.mjs)
+    // plus how high and how long the show ranked.
+    const clues = raw.clues || { shows: {} };
+    for (const x of shows) x.fame = (clues.shows[x.i] || 0) + (x.no1 ? 3 : x.top10 ? 1.4 : 0.4) + 0.25 * x.runs.length;
     const periods = seasons.map((se) => se.y);
     const first = periods[0], last = periods[periods.length - 1];
 
@@ -56,7 +61,7 @@
       searchHint: 'Find a TV show',
       awardNote: 'won the Emmy for best drama or comedy series',
       subtitle: `Nielsen season rankings · ${label(first)} – ${label(last)}`,
-      tabs: [['wall', 'Wall'], ['genres', 'Genres'], ['lanes', 'Shows'], ['quiz', 'Quiz']],
+      tabs: [['wall', 'Wall'], ['genres', 'Genres'], ['lanes', 'Shows']],
       fams, hasUnknown: shows.some((x) => x.fam < 0),
       srcLabels: ['No genre data', 'Genre classified by Claude', 'Genre classified by Claude; TVmaze agrees'],
       items: shows, entities: shows, entitiesAreItems: true,
@@ -108,20 +113,7 @@
       },
       entityPage: showPage,
 
-      quiz: {
-        yearOf: (x) => x.home.p,
-        // Any season the show was a top-30 hit counts as exactly right.
-        yearsOk: (x) => x.runs.flatMap((r) => [r.p, r.p + 1]),
-        firstOf: (x) => (x.premiered ? HA.yearFrac(x.premiered) : x.first + 0.7),
-        firstText: (x) => (x.premiered ? `premiered ${HA.fmtMonthOf(x.premiered)}` : `first reached the top 30 in ${label(x.first)}`),
-        firstPrompt: 'Which premiered first?',
-        facts: (x) => `best #${x.home.rank} in ${label(x.home.p)} · ${HA.plural(x.runs.length, 'season')} in the top 30 (${label(x.first)} – ${label(x.last)})`,
-        levels: { smash: ['Top 10', 10], hits: ['Top 30', 30] },
-        topPrompt: 'Which was the #1 show of the season?',
-        topLabel: 'No. 1 of the season',
-        links: (x) => showLinks(x),
-        yearPrompt: 'When was this show a top-30 hit?',
-      },
+      links: (x) => showLinks(x),
       about: () => about(D, seasons, shows, raw.built),
     };
     return D;
@@ -204,7 +196,7 @@
         x.premiered ? HA.stat(`${x.premiered.slice(0, 4)}–${x.ended ? x.ended.slice(2, 4) : 'now'}`, 'on the air') : HA.stat(`${x.first}–${String(x.last + 1).slice(-2)}`, 'first to last ranked')),
       h('div', { class: 'label-sm' }, 'Rank by season'),
       h('div', { class: 'd-run' }, runChart(x, 360, 140, false)),
-      h('div', { class: 'd-section' }, h('div', { class: 'label-sm' }, 'Look it up'), D.quiz.links(x)));
+      h('div', { class: 'd-section' }, h('div', { class: 'label-sm' }, 'Look it up'), D.links(x)));
   }
 
   function showPage(i, rerender, width) {
@@ -228,7 +220,7 @@
           h('td', { class: 'n' }, '#' + r.rank),
           h('td', {}, r.net || x.sub),
           h('td', { class: 'n' }, r.value != null ? fmtValue(D.byPeriod.get(r.p)[0].season, r.value) : '')))))),
-      h('div', { style: { marginTop: '12px' } }, D.quiz.links(x)));
+      h('div', { style: { marginTop: '12px' } }, D.links(x)));
   }
 
   function about(D, seasons, shows, built) {

@@ -152,3 +152,37 @@ Emmy best drama/comedy series and the Grammy for Record of the Year (Wikipedia w
 tables). They are matched in each build and shown as a ★ on tiles, tooltips and panels.
 Misses are real: CODA never had a box-office run, and two Record of the Year winners
 (U2's "Walk On", Plant & Krauss's "Please Read the Letter") never made the Hot 100.
+
+## 9. Quizzes: what to ask, measured on 544k Jeopardy! clues (October 2026)
+
+The quiz is a side feature of an explorer, so it has no tab: each view has a "Quiz me
+on …" button that opens ten questions in the drawer, scoped to what the view shows (the
+Wall's decade, the No. 1s, one artist or person, the genre spotlight).
+
+What to ask was measured rather than guessed. `tools/fetch-clues.mjs` matches the J!
+Archive's 544,110 clues (jwolle1/jeopardy_clue_dataset, 1984–2026) against every song,
+act, film, person and show here. A song counts only when one of its acts is in the clue
+or response (titles alone collide: "Mexico", "Greece"), and a name that is mostly
+something else (Chicago the city) counts only in a matching category. Findings:
+
+- **Which items.** 73% of #1 hits have come up at least once, against 36% of other
+  top-10 hits and 9% of #11–40 hits; per song, a #1 gets ~3× the clues of another
+  top-10 hit. All of the 25 biggest acts by chart points come up (median 20 clues).
+  For films, IMDb votes (lasting fame) predict being asked about as well as box office
+  (Spearman 0.30 vs 0.33); for TV, seasons in the top 30 predicts best (0.43). So each
+  item's `fame` is its clue count plus a prior from its peak/rank, and questions are
+  drawn by fame. Wrong answers are drawn from a similar fame band, so the right answer
+  never stands out as the one famous (or obscure) name, and "who starred" offers
+  actresses against actresses.
+- **Which kinds.** In music, artist-as-answer (~5.6k clues) and song→artist (~3.7k)
+  lead, then artist→song (~2.7k). In film, the film from a description (~5.8k), then
+  star→film (~2.8k) and film→star (~1.7k); director links are rarer (~1k). In TV, the
+  show from a description (~4.1k). Question weights follow that order.
+- **Years.** "What year?" is almost never the question itself (under 20 clues), but a
+  year or decade appears inside 31% of pop-culture clues as the hint. A rough sense of
+  when is what helps, so year questions are scored by closeness (within a year or two
+  counts, a few years off earns half), and pub quizzes' "name the year" rounds ask it
+  outright. Networks appear in only 6% of TV clues, so "which network" is rare here.
+
+`tools/test-quiz.mjs` generates ~4,000 questions through the app's own code and checks
+each (four distinct choices, one right, reachable years, every kind generated).

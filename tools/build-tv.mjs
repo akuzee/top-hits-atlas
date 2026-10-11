@@ -5,6 +5,7 @@
 // television programs of <season>" pages (each file names its source). They are
 // checked in because the build environment can't reach Wikipedia directly.
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
+import { clueMap } from './lib/clues.mjs';
 
 const here = (p) => new URL(p, import.meta.url).pathname;
 const SEASONS = here('./tv/seasons/');
@@ -183,6 +184,7 @@ function build() {
       return [r.rank, r.title, r.platform, r.value, showIdx.has(k) ? showIdx.get(k) : -1, f == null ? -1 : FAM[f]];
     }),
   }));
+  out.clues = { shows: clueMap('shows', out.shows.map((r) => r[0])) };
   // Emmy best drama and comedy series (tools/fetch-awards.mjs), as
   // [show index, ceremony year, 'drama' | 'comedy'] for shows that ranked.
   const awardsFile = here('./cache/awards.json');

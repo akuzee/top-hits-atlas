@@ -33,6 +33,7 @@ jobs:
           for f in js/*.js; do node --check "$f"; done
           node tools/test-model.mjs
           node tools/test-tv.mjs
+          node tools/test-quiz.mjs
       - name: Stage the site
         run: mkdir _site && cp -r index.html css js data _site/
       - uses: actions/configure-pages@v5

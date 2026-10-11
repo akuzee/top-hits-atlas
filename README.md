@@ -15,7 +15,9 @@ Views:
 - **No. 1s**: every week's #1 on a calendar (one row per year) or as a list.
 - **Genres**: a 100% river of each genre's share of chart points, quarter by quarter.
 - **Artists**: career lanes for each decade's leading acts; any artist's week-by-week trajectory.
-- **Quiz**: guess the year, which came first, biggest hit of the year.
+- **Quiz me**: a button on each view opens ten questions on what it shows (a decade, the
+  No. 1s, one artist), weighted toward what most often comes up in general-knowledge
+  quizzes. See DECISIONS.md §9.
 
 A ★ marks award winners: the Grammy for Record of the Year, the Oscar for Best Picture,
 and the Emmy for best drama or comedy series.
@@ -25,6 +27,7 @@ and the Emmy for best drama or comedy series.
 ```sh
 export NODE_USE_ENV_PROXY=1    # only behind an HTTPS proxy
 node tools/fetch-awards.mjs   # Best Picture, Emmy series, Record of the Year → star badges
+node tools/fetch-clues.mjs    # quiz weights from 544k Jeopardy! clues (after a first build; then rebuild)
 
 # music
 node tools/fetch.mjs          # weekly charts, Spotify genres, #1 dataset → tools/cache/raw
@@ -45,6 +48,7 @@ node tools/fetch-tvmaze.mjs   # premiere/end dates, IMDb ids
 node tools/build-tv.mjs       # tools/tv/seasons/*.tsv → data/tv.json
 node tools/test-tv.mjs        # TV checks: every season present, known #1s
 node tools/test-model.mjs     # sanity checks, incl. year-end #1 agreement
+node tools/test-quiz.mjs      # generates ~4,000 quiz questions and checks each
 node tools/serve.mjs          # → http://localhost:8018
 node tools/build-artifact.mjs # → dist/hit-atlas.html, one self-contained file
 ```
@@ -67,5 +71,6 @@ No dependencies. To pick up new weekly charts: `node tools/fetch.mjs --force`, t
 | `tools/lib/wiki.mjs` `imdb.mjs` | Wikipedia table parser (cached); IMDb bulk-file slices |
 | `tools/tv/seasons/` | One Nielsen table per season, transcribed from Wikipedia (checked in) |
 | `tools/tv/families.json`, `overrides.json` | Show genre families; show-name aliases |
-| `js/wall.js` `calendar.js` `river.js` `lanes.js` `quiz.js` | Views; each reads only `HA.D`, the current domain |
+| `js/wall.js` `calendar.js` `river.js` `lanes.js` | Views; each reads only `HA.D`, the current domain |
+| `js/quiz.js` `questions.js` | The quiz drawer, and its question kinds per domain |
 | `js/app.js` | Boot and routing (`#<domain>-<view>`, e.g. `#music-wall`) |

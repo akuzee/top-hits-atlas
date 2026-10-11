@@ -10,6 +10,7 @@
 //   IMDb       matches each film to an id: runtime, rating, director, cast
 //   Wikidata   full genre lists by IMDb id (IMDb's own file keeps only three, alphabetically)
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
+import { clueMap } from './lib/clues.mjs';
 import { page, tables, col } from './lib/wiki.mjs';
 import { movies as imdbMovies, people as imdbPeople } from './lib/imdb.mjs';
 
@@ -286,6 +287,9 @@ async function build() {
     }),
     people,
   };
+  const women = new Set(crew.actresses || []);
+  out.actresses = [...peopleIdx].filter(([n]) => women.has(n)).map(([, i]) => i);
+  out.clues = { films: clueMap('films', out.films.map((r) => r[7] || `${r[0]} (${r[1]})`)), people: clueMap('people', out.people) };
   // Best Picture winners (tools/fetch-awards.mjs), as film indexes.
   const awardsFile = here('./cache/awards.json');
   if (existsSync(awardsFile)) {

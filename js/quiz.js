@@ -1,179 +1,259 @@
-// Quiz: three ten-question games for fixing hits in time. Domains supply
-// D.quiz {yearOf, yearsOk, firstOf, firstText, facts, levels, topPrompt, links}.
+// Quiz: ten questions on what's on screen, opened from a view's "Quiz me"
+// button into the side drawer rather than a tab of its own, since the app is
+// an explorer first. Scope comes from the view (a decade, the No. 1s, one
+// artist) plus the genre spotlight. Question kinds live in questions.js; which
+// songs, films and shows get asked follows each item's fame (set in the domain
+// files). Missed items come back in later rounds.
 (function () {
   const HA = globalThis.HA, h = HA.h;
-  const MODES = { year: 'Guess the year', first: 'Which came first?', top: 'Biggest of the year' };
-  const ROUND = 10;
-  const modeLabel = () => (cfg.mode === 'top' && HA.D.quiz.topLabel) || MODES[cfg.mode];
-  let root, card, side, cfg, game, mountedFor = null;
+  const ROUND = 10, REVIEW = 0.3, MISSED_MAX = 80;
+  const sets = new Map();
+  let game = null;
 
-  function mount(el) {
-    root = el;
-    card = h('div', { class: 'quiz-card' });
-    side = h('div', { class: 'quiz-side' });
-    root.append(
-      h('div', { class: 'view-head' }, h('div', {}, h('h1', {}, 'Quiz'), h('p', {}, 'Ten questions a round. The genre spotlight and the decades you pick narrow the pool, so you can drill one era at a time.'))),
-      h('div', { class: 'quiz' }, card, side));
+  const K = () => HA.quizKit;
+  const kit = (D) => { if (!sets.has(D)) sets.set(D, HA.questions[D.id](D)); return sets.get(D); };
+  const missedKey = () => `quiz:missed:${HA.D.id}`;
+  const missed = () => new Set(HA.store.get(missedKey(), []));
+  function remember(key, wrong) {
+    const s = missed();
+    s.delete(key);
+    if (wrong) s.add(key);
+    HA.store.set(missedKey(), [...s].slice(-MISSED_MAX));
   }
 
-  const rnd = (n) => Math.floor(Math.random() * n);
-  const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-  const decadeOf = (y) => Math.floor(y / 10) * 10;
-  const inDecades = (y) => !cfg.decades.length || cfg.decades.includes(decadeOf(y));
-
-  const LEVELS = () => HA.D.quiz.levels;
-  function pool() {
-    const N = LEVELS()[cfg.level][1];
-    return HA.D.items.filter((x) => x.home && x.home.rank <= N && inDecades(x.home.p) && HA.lit(x.fam));
+  function scopeLabel(sc) {
+    const D = HA.D;
+    const what = sc.ent != null ? D.entities[sc.ent].name
+      : sc.no1 ? (D.id === 'music' ? 'No. 1 hits' : 'weekend No. 1s')
+        : sc.years ? sc.label : 'all years';
+    return sc.fam != null ? `${D.fams[sc.fam].label}: ${what}` : what;
   }
 
-  function newGame() {
-    HA.setPref('quiz', cfg);
-    game = { n: 0, results: [], used: new Set(), q: null };
-    next();
+  // Kinds that don't fit a scope: year and decade questions have no place in a
+  // No. 1s or single-artist quiz.
+  const NOT_FOR_NO1 = new Set(['biggest', 'yearhit', 'top', 'peak', 'whohits', 'emmy', 'network', 'grammy', 'bp']);
+
+  function context(sc, level) {
+    const D = HA.D, Q = kit(D);
+    const famOk = (x) => sc.fam == null || x.fam === sc.fam;
+    const yearsOf = Q.years || ((x) => [Q.yearOf(x)]);
+    const inYears = (ys) => !sc.years || ys.some((y) => y >= sc.years[0] && y <= sc.years[1]);
+    const entSet = sc.ent != null ? new Set(Q.entItems(D.entities[sc.ent])) : null;
+    const inScope = (x) => famOk(x) && inYears(yearsOf(x)) && (!sc.no1 || Q.isNo1(x)) && (!entSet || entSet.has(x));
+    const byFame = (a, b) => b.fame - a.fame;
+    const pool = Q.items.filter(inScope).sort(byFame);
+    // An artist belongs to a decade's quiz when a good share of their fame is
+    // from it: the Beatles had a 1982 hit, but they are not an '80s act.
+    const mostlyIn = (e) => {
+      if (!sc.years) return true;
+      let t = 0, a = 0;
+      for (const x of Q.entItems(e)) { t += x.fame; if (inYears(yearsOf(x))) a += x.fame; }
+      return t > 0 && a / t >= 0.4;
+    };
+    const ents = sc.ent != null ? [D.entities[sc.ent]]
+      : Q.ents.filter((e) => famOk(e) && mostlyIn(e) && (!sc.no1 || Q.entItems(e).some(Q.isNo1))).sort(byFame);
+    // Familiar draws from the most-known fifth of the scope; Deeper from the next two fifths.
+    const tier = (list) => {
+      const n = Math.max(30, Math.round(list.length * 0.2));
+      if (list.length <= n) return list;
+      return level === 'deeper' ? list.slice(n, n * 3) : list.slice(0, n);
+    };
+    const used = new Set(), miss = missed();
+    const picker = (tag, tierList, all) => (filter = () => true) => {
+      const ok = (x) => !used.has(tag + x.i) && filter(x);
+      const again = all.filter((x) => miss.has(tag + x.i) && ok(x));
+      let x = null;
+      if (again.length && Math.random() < REVIEW) x = again[K().rnd(again.length)];
+      else { const cands = tierList.filter(ok); if (cands.length) x = K().pick(cands); }
+      // A small scope (one artist's handful of hits) may ask about the same
+      // item twice, in different ways.
+      if (!x && all.length < 15) { const cands = all.filter(filter); if (cands.length) x = K().pick(cands); }
+      if (x) used.add(tag + x.i);
+      return x;
+    };
+    const periods = D.periods.filter((p) => !sc.years || (p >= sc.years[0] && p <= sc.years[1]));
+    const decades = [...new Set(periods.map((p) => Math.floor(p / 10) * 10))].filter((d) => D.periods.filter((p) => Math.floor(p / 10) * 10 === d).length >= 5);
+    return {
+      level, pool, ents, inScope, famOk, top: tier(pool),
+      item: picker('i', tier(pool), pool),
+      ent: picker('e', tier(ents), ents),
+      year: () => (periods.length ? periods[K().rnd(periods.length)] : null),
+      decade: () => (decades.length ? decades[K().rnd(decades.length)] : null),
+    };
   }
 
-  function pickSong(p) {
-    for (let tries = 0; tries < 50; tries++) { const x = p[rnd(p.length)]; if (!game.used.has(x.i)) { game.used.add(x.i); return x; } }
-    return p[rnd(p.length)];
+  function kinds(sc) {
+    const Q = kit(HA.D);
+    return Object.entries(Q.kinds).flatMap(([id, k]) => {
+      let w = k.w;
+      if (sc.ent != null) w = Q.entKinds.includes(id) ? k.wEnt || k.w : 0;
+      else if (sc.no1 && NOT_FOR_NO1.has(id)) w = 0;
+      else if (sc.focus === 'ents' && k.ent) w *= 2.5;
+      return w > 0 ? [{ id, w, make: k.make }] : [];
+    });
+  }
+
+  function nextQuestion() {
+    const ks = kinds(game.scope);
+    for (let tries = 0; tries < 40 && ks.length; tries++) {
+      let k = K().pick(ks, (x) => x.w);
+      // Avoid the same kind twice running when there's a choice.
+      if (k.id === game.lastKind && ks.length > 1 && Math.random() < 0.6) k = K().pick(ks, (x) => x.w);
+      const q = k.make(game.ctx);
+      if (!q || !(q.choices || q.year != null)) continue;
+      // Never the same question about the same thing twice in a round.
+      const key = `${k.id}:${q.entity ? 'e' : 'i'}${q.subject.i}`;
+      if (game.asked.has(key)) continue;
+      game.asked.add(key);
+      q.kind = k.id; game.lastKind = k.id;
+      return q;
+    }
+    return null;
+  }
+
+  function start(sc) {
+    const level = HA.store.get('quiz:level', 'familiar');
+    game = { scope: sc, level, ctx: context(sc, level), n: 0, results: [], log: [], q: null, lastKind: null, asked: new Set() };
+    game.q = nextQuestion();
+    render(true);
+  }
+
+  function answer(points, detail) {
+    const q = game.q;
+    q.done = { points, detail };
+    game.results.push(points);
+    game.log.push(q);
+    game.n++;
+    remember((q.entity ? 'e' : 'i') + q.subject.i, points < 1);
+    render();
   }
 
   function next() {
-    const p = pool(), D = HA.D;
-    if (cfg.mode === 'top') {
-      const ps = D.periods.filter((y) => inDecades(y) && D.byPeriod.get(y).length >= 10);
-      if (!ps.length) { game.q = { empty: true }; renderCard(); return; }
-      const y = ps[rnd(ps.length)], list = D.byPeriod.get(y);
-      const opts = shuffle([list[0], ...shuffle(list.slice(3, 25)).slice(0, 3)]);
-      game.q = { type: 'top', year: y, opts, answer: list[0].it.i };
-    } else if (p.length < 2) {
-      game.q = { empty: true };
-    } else if (cfg.mode === 'year') {
-      game.q = { type: 'year', song: pickSong(p), guess: Math.round((D.periods[0] + D.periods[D.periods.length - 1]) / 2) };
+    if (game.n >= ROUND) { game.over = true; render(); return; }
+    game.q = nextQuestion();
+    render();
+  }
+
+  // ── rendering ──────────────────────────────────────────────────────────────
+  const fmt = (n) => (n % 1 ? `${Math.floor(n)}½` : String(n));
+  function render(fresh) {
+    const D = HA.D, sc = game.scope;
+    const seg = (opts, cur, onPick) => h('div', { class: 'seg', role: 'group' }, opts.map(([k, l]) => h('button', { 'aria-pressed': String(k === cur), onclick: () => onPick(k) }, l)));
+    const scopes = [[scopeLabel(sc), sc]];
+    if (sc.years || sc.no1 || sc.ent != null) scopes.push(['All years', { fam: sc.fam }]);
+    const node = h('div', { class: 'qz' },
+      h('div', { class: 'label-sm' }, 'Quiz'),
+      h('div', { class: 'qz-scope' }, scopeLabel(sc)),
+      h('div', { class: 'controls qz-controls' },
+        scopes.length > 1 && seg(scopes.map(([l], k) => [k, l]), 0, (k) => start(scopes[k][1])),
+        seg([['familiar', 'Familiar'], ['deeper', 'Deeper cuts']], game.level, (k) => { HA.store.set('quiz:level', k); start(sc); })),
+      game.over ? summary() : card());
+    const body = document.getElementById('drawer-body'), drawer = document.getElementById('drawer');
+    if (fresh || drawer.hidden || !body.querySelector('.qz')) HA.openDrawer(node);
+    else body.replaceChildren(node);
+    (body.querySelector('.qz-focus') || body.querySelector('.q-choice:not(:disabled)'))?.focus({ preventScroll: true });
+  }
+
+  function progress() {
+    const right = game.results.reduce((a, b) => a + b, 0);
+    return h('div', { class: 'qz-progress' },
+      h('span', { class: 'note' }, `Question ${Math.min(game.n + (game.q?.done ? 0 : 1), ROUND)} of ${ROUND} · ${fmt(right)} right`),
+      h('div', { class: 'dots' }, Array.from({ length: ROUND }, (_, k) => h('i', { class: k < game.results.length ? 'on' : '', style: { '--v': k < game.results.length ? 15 + game.results[k] * 85 : 0 } }))));
+  }
+
+  function card() {
+    const D = HA.D, q = game.q;
+    if (!q) return h('div', { class: 'q-result' }, h('b', {}, 'Not enough here for a quiz.'), h('div', { class: 'note' }, 'Try all years, a different level, or clear the genre spotlight.'));
+    const parts = [progress(),
+      h('div', { class: 'q-prompt' }, q.kicker),
+      h('div', { class: 'qz-q' + (q.prompt.length > 42 ? ' long' : '') }, q.prompt),
+      q.sub && h('div', { class: 'qz-sub' }, q.sub)];
+    if (q.choices) {
+      parts.push(h('div', { class: 'q-choices' }, q.choices.map((c, k) => h('button', {
+        class: 'q-choice' + (q.done ? (c.ok ? ' right' : q.done.detail === k ? ' wrong' : '') : ''),
+        disabled: q.done ? true : null, 'data-k': k + 1,
+        onclick: () => answer(c.ok ? 1 : 0, k),
+      }, h('b', {}, c.label), c.sub && h('span', {}, c.sub), q.done && c.reveal && h('div', { class: 'reveal' }, c.reveal)))));
+      if (q.done) parts.push(result(q.done.points ? 'Right.' : 'Not this one.'));
     } else {
-      const a = pickSong(p);
-      let b = null;
-      const Y = D.quiz.yearOf;
-      for (let tries = 0; tries < 200 && !b; tries++) { const c = p[rnd(p.length)]; const d = Math.abs(Y(c) - Y(a)); if (d >= 1 && d <= 8 && c.i !== a.i) b = c; }
-      b = b || p.find((c) => Y(c) !== Y(a)) || p[rnd(p.length)];
-      game.q = { type: 'first', opts: shuffle([a, b]) };
-    }
-    renderCard();
-    renderSide();
-  }
-
-  function score(points, detail) {
-    game.q.done = { points, detail };
-    game.results.push(points);
-    game.n++;
-    renderCard();
-    renderSide();
-  }
-
-  function renderCard() {
-    const D = HA.D, q = game.q, lo = D.periods[0], hi = D.periods[D.periods.length - 1];
-    card.replaceChildren();
-    if (game.over) {
-      const total = game.results.reduce((a, b) => a + b, 0);
-      const key = `${HA.D.id}:best:${cfg.mode}:${cfg.level}`;
-      const best = Math.max(total, HA.store.get(key, 0));
-      HA.store.set(key, best);
-      card.append(
-        h('div', { class: 'q-prompt' }, 'Round complete'),
-        h('div', { class: 'q-song' }, `${total} / ${ROUND * 100}`),
-        h('div', { class: 'q-artist' }, `Your best at ${modeLabel()} (${LEVELS()[cfg.level][0]}): ${best}`),
-        h('div', { class: 'q-row' }, h('button', { class: 'btn primary', onclick: newGame }, 'Play again')));
-      return;
-    }
-    if (!q) return;
-    if (q.empty) {
-      card.append(h('div', { class: 'q-prompt' }, 'No songs match'), h('p', {}, 'Pick more decades, a deeper level, or clear the genre spotlight.'));
-      return;
-    }
-    card.append(h('div', { class: 'q-prompt' }, `Question ${Math.min(game.n + (q.done ? 0 : 1), ROUND)} of ${ROUND} · ${modeLabel()}`));
-    const nextBtn = () => h('div', { class: 'q-row' }, h('button', {
-      class: 'btn primary', onclick: () => { if (game.n >= ROUND) { game.over = true; renderCard(); } else next(); },
-    }, game.n >= ROUND ? 'See score' : 'Next question →'));
-
-    if (q.type === 'year') {
-      const x = q.song;
+      // The slider spans the data, widened for an answer just outside it (a 1949 premiere).
+      const lo = Math.min(D.periods[0], q.year), hi = Math.max(D.periods[D.periods.length - 1], q.year);
+      if (q.guess == null) q.guess = game.scope.years ? Math.round((game.scope.years[0] + game.scope.years[1]) / 2) : Math.round((lo + hi) / 2);
       const out = h('div', { class: 'q-year' }, q.guess);
-      const slider = h('input', { id: 'q-slider', class: 'q-slider', type: 'range', min: lo, max: hi, value: q.guess, 'aria-label': 'Your guess', disabled: q.done ? true : null });
-      slider.addEventListener('input', () => { q.guess = +slider.value; out.textContent = q.guess; });
-      card.append(D.quiz.yearPrompt && h('div', { class: 'note', style: { marginTop: '4px' } }, D.quiz.yearPrompt), h('div', { class: 'q-song' }, x.title), h('div', { class: 'q-artist' }, x.sub), h('div', { style: { marginTop: '10px' } }, D.quiz.links(x)),
-        h('div', { style: { marginTop: '22px' } }, out), slider,
-        h('div', { class: 'note', style: { display: 'flex', justifyContent: 'space-between' } }, h('span', {}, lo), h('span', {}, hi)));
+      const slider = h('input', { class: 'q-slider' + (q.done ? '' : ' qz-focus'), type: 'range', min: lo, max: hi, value: q.guess, 'aria-label': 'Your guess', disabled: q.done ? true : null });
+      const set = (v) => { q.guess = Math.max(lo, Math.min(hi, v)); slider.value = q.guess; out.textContent = q.guess; };
+      slider.addEventListener('input', () => set(+slider.value));
+      parts.push(out, slider, h('div', { class: 'note qz-ends' }, h('span', {}, lo), h('span', {}, hi)));
       if (!q.done) {
-        const nudge = (d) => h('button', { class: 'btn', 'aria-label': d < 0 ? 'One year earlier' : 'One year later', onclick: () => { q.guess = Math.max(lo, Math.min(hi, q.guess + d)); slider.value = q.guess; out.textContent = q.guess; } }, d < 0 ? '−1' : '+1');
-        card.append(h('div', { class: 'q-row' }, nudge(-1), nudge(1), h('button', {
-          class: 'btn primary', onclick: () => {
-            const off = Math.min(...D.quiz.yearsOk(x).map((y) => Math.abs(q.guess - y)));
-            score(Math.max(0, 100 - 20 * off), off);
-          },
-        }, 'Lock it in')));
+        const nudge = (d) => h('button', { class: 'btn', 'aria-label': d < 0 ? 'One year earlier' : 'One year later', onclick: () => set(q.guess + d) }, d < 0 ? '−1' : '+1');
+        parts.push(h('div', { class: 'q-row' }, nudge(-1), nudge(1), h('button', { class: 'btn primary qz-lock', onclick: lock }, 'Lock it in')));
       } else {
         const off = q.done.detail;
-        card.append(h('div', { class: 'q-result' },
-          h('b', {}, off === 0 ? `Exactly: ${D.quiz.yearOf(x)}. +100` : `It’s ${D.quiz.yearOf(x)}. You were ${HA.plural(off, 'year')} off. +${q.done.points}`),
-          h('div', { class: 'note' }, D.quiz.facts(x)),
-          h('div', { style: { marginTop: '6px' } }, h('button', { class: 'btn', onclick: () => HA.open(x) }, 'Details'))), nextBtn());
+        parts.push(result(off <= q.tol[0] ? (off ? `Close enough: it’s ${q.year}.` : `Exactly ${q.year}.`) : off <= q.tol[1] ? `Near: it’s ${q.year}, ${HA.plural(off, 'year')} off.` : `It’s ${q.year}. You were ${HA.plural(off, 'year')} off.`));
       }
-    } else if (q.type === 'first') {
-      card.append(h('div', { class: 'q-song', style: { fontSize: 'clamp(26px,4vw,38px)' } }, D.quiz.firstPrompt));
-      const [a, b] = q.opts;
-      const earlier = D.quiz.firstOf(a) <= D.quiz.firstOf(b) ? a : b;
-      card.append(h('div', { class: 'q-choices two' }, q.opts.map((x) => h('button', {
-        class: 'q-choice' + (q.done ? (x === earlier ? ' right' : q.done.detail === x.i ? ' wrong' : '') : ''),
-        disabled: q.done ? true : null,
-        onclick: () => score(x === earlier ? 100 : 0, x.i),
-      }, h('b', {}, x.title), h('span', {}, x.sub), q.done && h('div', { class: 'reveal' }, D.quiz.facts(x))))));
-      if (q.done) card.append(h('div', { class: 'q-result' }, h('b', {}, q.done.points ? 'Right. +100' : 'Not this time.'), h('div', { class: 'note' }, `“${earlier.title}” ${D.quiz.firstText(earlier)}.`)), nextBtn());
-    } else {
-      card.append(h('div', { class: 'q-song' }, D.periodLabel(q.year)), h('div', { class: 'q-artist' }, D.quiz.topPrompt));
-      card.append(h('div', { class: 'q-choices' }, q.opts.map((e) => h('button', {
-        class: 'q-choice' + (q.done ? (e.it.i === q.answer ? ' right' : q.done.detail === e.it.i ? ' wrong' : '') : ''),
-        disabled: q.done ? true : null,
-        onclick: () => score(e.it.i === q.answer ? 100 : 0, e.it.i),
-      }, h('b', {}, e.it.title), h('span', {}, e.it.sub), q.done && h('div', { class: 'reveal' }, `#${e.rank} of ${D.periodLabel(q.year)}`)))));
-      if (q.done) card.append(h('div', { class: 'q-result' }, h('b', {}, q.done.points ? 'Right. +100' : `It was “${D.items[q.answer].title}”.`)), nextBtn());
     }
+    return h('div', {}, ...parts);
   }
 
-  function renderSide() {
-    const D = HA.D;
-    const seg = (key, opts) => h('div', { class: 'seg', role: 'group' }, Object.entries(opts).map(([k, v]) => h('button', {
-      'aria-pressed': String(cfg[key] === k), onclick: () => { cfg[key] = k; newGame(); },
-    }, Array.isArray(v) ? v[0] : v)));
-    const decs = [];
-    for (const p of D.periods) if (!decs.includes(decadeOf(p))) decs.push(decadeOf(p));
-    const total = game.results.reduce((a, b) => a + b, 0);
-    side.replaceChildren(
-      h('div', { class: 'panel' },
-        h('div', { class: 'label-sm' }, 'Score'),
-        h('div', { class: 'score-big' }, total),
-        h('div', { class: 'dots' }, Array.from({ length: ROUND }, (_, k) => h('i', { class: k < game.results.length ? 'on' : '', style: { '--v': k < game.results.length ? 15 + game.results[k] * 0.85 : 0 }, title: k < game.results.length ? `+${game.results[k]}` : '' })))),
-      h('div', { class: 'panel' },
-        h('div', { class: 'label-sm' }, 'Game'), seg('mode', Object.assign({}, MODES, D.quiz.topLabel && { top: D.quiz.topLabel })),
-        h('div', { class: 'label-sm', style: { marginTop: '12px' } }, 'Pool'), seg('level', LEVELS()),
-        h('div', { class: 'note', style: { marginTop: '4px' } }, `Each ${D.periodNoun}’s top ${LEVELS()[cfg.level][1]}${HA.state.spot != null ? ', spotlit genre only' : ''}: ${HA.plural(pool().length, D.noun)}`),
-        h('div', { class: 'label-sm', style: { marginTop: '12px' } }, 'Decades'),
-        h('div', { class: 'tag-list', style: { marginTop: '4px' } }, decs.map((d) => h('button', {
-          class: 'chip', 'aria-pressed': String(cfg.decades.includes(d)),
-          onclick: () => { cfg.decades = cfg.decades.includes(d) ? cfg.decades.filter((x) => x !== d) : [...cfg.decades, d]; newGame(); },
-        }, `${d}s`))),
-        h('div', { class: 'note', style: { marginTop: '4px' } }, cfg.decades.length ? 'Tap again to drop a decade.' : 'All decades. Tap to narrow.')));
+  function lock() {
+    const q = game.q;
+    const off = Math.min(...(q.ok || [q.year]).map((y) => Math.abs(q.guess - y)));
+    answer(off <= q.tol[0] ? 1 : off <= q.tol[1] ? 0.5 : 0, off);
   }
 
-  function render() {
-    if (mountedFor !== HA.D) {
-      mountedFor = HA.D;
-      cfg = Object.assign({ mode: 'year', level: Object.keys(HA.D.quiz.levels)[0], decades: [] }, HA.pref('quiz', {}));
-      if (!HA.D.quiz.levels[cfg.level]) cfg.level = Object.keys(HA.D.quiz.levels)[0];
-      game = null;
-    }
-    if (!game) newGame(); else { renderCard(); renderSide(); }
+  function result(head) {
+    return h('div', {},
+      h('div', { class: 'q-result' }, h('b', {}, head), h('div', { class: 'note' }, game.q.reveal)),
+      h('div', { class: 'q-row' }, h('button', { class: 'btn primary qz-focus qz-next', onclick: next }, game.n >= ROUND ? 'See how you did' : 'Next question →')));
   }
 
-  HA.views.quiz = { mount, render };
-  HA.on('spot', () => { if (root && !root.hidden && game) newGame(); });
+  function summary() {
+    const D = HA.D, total = game.results.reduce((a, b) => a + b, 0);
+    const answerOf = (q) => (q.choices ? q.choices.find((c) => c.ok).label : String(q.year));
+    return h('div', {},
+      h('div', { class: 'q-year' }, `${fmt(total)} / ${ROUND}`),
+      h('ol', { class: 'qz-log' }, game.log.map((q, k) => h('li', { class: game.results[k] >= 1 ? 'ok' : game.results[k] ? 'half' : 'miss' },
+        h('span', { class: 'mark', 'aria-label': game.results[k] >= 1 ? 'right' : game.results[k] ? 'close' : 'missed' }, game.results[k] >= 1 ? '✓' : game.results[k] ? '≈' : '✗'),
+        h('button', { class: 'linkish', onclick: () => (q.entity ? HA.showEntity(q.subject.i) : HA.open(q.subject)) },
+          h('span', { class: 'note' }, q.kicker + ' '), q.prompt.length > 60 ? q.prompt.slice(0, 58) + '…' : q.prompt, h('b', {}, ' → ' + answerOf(q)))))),
+      h('div', { class: 'note' }, missed().size ? 'Ones you missed come back in later rounds.' : ''),
+      h('div', { class: 'q-row' }, h('button', { class: 'btn primary qz-focus', onclick: () => start(game.scope) }, 'Another round')));
+  }
+
+  // ── entry points ───────────────────────────────────────────────────────────
+  // scope: {years: [y0, y1], label} | {no1: true} | {ent: i} | {focus: 'ents'} | {}
+  HA.quiz = {
+    open(scope = {}) {
+      const sc = Object.assign({}, scope, { fam: HA.state.spot ?? null });
+      const same = game && !game.over && JSON.stringify(game.scope) === JSON.stringify(sc);
+      if (same) render(true); else start(sc);
+    },
+    // A single artist or person needs a few hits to make a round.
+    canEnt(i) { const Q = kit(HA.D); return Q.entKinds.length > 0 && Q.entItems(HA.D.entities[i]).length >= 3; },
+    // n questions for a scope without rendering, for tools/test-quiz.mjs.
+    sample(scope, level, n) {
+      const saved = game;
+      game = { scope: Object.assign({ fam: null }, scope), level, ctx: context(Object.assign({ fam: null }, scope), level), lastKind: null, asked: new Set() };
+      const out = [];
+      for (let k = 0; k < n; k++) { const q = nextQuestion(); if (!q) break; out.push(q); }
+      game = saved;
+      return out;
+    },
+  };
+  // label may be a function, re-read when the genre spotlight changes.
+  HA.quizButton = (scope, label) => {
+    const text = typeof label === 'function' ? label : () => label;
+    const b = h('button', { class: 'btn quiz-btn', onclick: () => HA.quiz.open(scope) }, text());
+    b._label = text;
+    return b;
+  };
+
+  HA.on('domain', () => { game = null; });
+  HA.on('spot', () => document.querySelectorAll('.quiz-btn').forEach((b) => { if (b._label) b.textContent = b._label(); }));
+  document.addEventListener('keydown', (e) => {
+    const box = document.querySelector('#drawer:not([hidden]) .qz');
+    if (!box || !game || e.target.closest?.('input[type=text], input[type=search]')) return;
+    if (/^[1-4]$/.test(e.key)) box.querySelector(`.q-choice[data-k="${e.key}"]:not(:disabled)`)?.click();
+    else if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') (box.querySelector('.qz-next') || box.querySelector('.qz-lock'))?.click();
+  });
 })();
