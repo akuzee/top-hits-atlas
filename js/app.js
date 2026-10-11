@@ -67,10 +67,13 @@
       renderTabs();
       HA.emit('domain');
     }
-    // Old links to the quiz tab open the Wall with the quiz alongside.
+    // A view this medium lacks (TV has no No. 1s) falls back to the Wall, and the
+    // address follows. Old links to the quiz tab open the Wall with the quiz alongside.
     const quiz = view === 'quiz';
-    if (view !== 'about' && !D.tabs.some(([v]) => v === view)) view = 'wall';
-    if (quiz) history.replaceState(null, '', `#${dom}-wall`);
+    if (view !== 'about' && !D.tabs.some(([v]) => v === view)) {
+      view = 'wall';
+      history.replaceState(null, '', `#${dom}-wall`);
+    }
     HA.state.view = view;
     renderSwitcher();
     for (const el of document.querySelectorAll('main > .view')) el.hidden = el.id !== 'view-' + view;
@@ -84,6 +87,7 @@
 
   async function boot() {
     available = await findAvailable();
+    HA.available = available;
     if (!available.length) throw new Error('no data found; run tools/build.mjs');
     document.getElementById('loading').remove();
     HA.initSearch();

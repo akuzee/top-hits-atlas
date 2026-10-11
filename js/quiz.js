@@ -149,11 +149,23 @@
       select('Genre', st.fam ?? '', [['', 'All genres'], ...D.fams.map((f, i) => [i, f.label])], (v) => change({ fam: v === '' ? null : +v })));
   }
 
+  // Switching medium in the quiz switches the page behind it too, so the
+  // answers' links open in the right medium; the quiz reopens once it loads.
+  let reopen = false;
+  function mediaSwitch() {
+    const ids = HA.available || [HA.D.id];
+    if (ids.length < 2) return h('div', { class: 'qz-scope' }, HA.D.label);
+    return h('div', { class: 'domains qz-media', role: 'group', 'aria-label': 'Medium' }, ids.map((id) => h('button', {
+      'aria-pressed': String(id === HA.D.id),
+      onclick: () => { if (id === HA.D.id) return; reopen = true; location.hash = `${id}-${HA.state.view}`; },
+    }, HA.domains[id].label)));
+  }
+
   function render(fresh) {
     const D = HA.D;
     const node = h('div', { class: 'qz' },
       h('div', { class: 'label-sm' }, 'Quiz'),
-      h('div', { class: 'qz-scope' }, D.label),
+      mediaSwitch(),
       settingsRow(),
       game.over ? summary() : card());
     const body = document.getElementById('drawer-body'), drawer = document.getElementById('drawer');
@@ -242,7 +254,11 @@
       return out;
     },
   };
-  HA.on('domain', () => { game = null; });
+  HA.on('domain', () => {
+    game = null;
+    // The new medium's view renders right after this event; open the quiz after it.
+    if (reopen) { reopen = false; setTimeout(() => HA.quiz.open(), 0); }
+  });
   document.addEventListener('keydown', (e) => {
     const box = document.querySelector('#drawer:not([hidden]) .qz');
     if (!box || !game || e.target.closest?.('input[type=text], input[type=search], select')) return;

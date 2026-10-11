@@ -234,6 +234,7 @@ svg .baseline { stroke: var(--line-2); }
 .q-result { margin-top: 16px; padding: 12px 14px; border-radius: 10px; background: var(--surface-2); }
 .q-result b { font-size: 16px; }
 .qz-scope { font-family: var(--font-display); font-weight: 900; font-size: 26px; line-height: 1.05; margin: 2px 40px 10px 0; text-wrap: balance; }
+.qz-media { margin: 6px 0 12px; }
 .qz-settings { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
 .qz-range { display: inline-flex; align-items: center; gap: 6px; }
 .qz-settings select { border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 5px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
